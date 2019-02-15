@@ -19,36 +19,36 @@ cfg = __C
 __C.TRAIN = edict()
 
 # Set the shadownet training epochs
-__C.TRAIN.EPOCHS = 80010
+__C.TRAIN.EPOCHS = 160010
 # Set the display step
 __C.TRAIN.DISPLAY_STEP = 1
 # Set the test display step during training process
-__C.TRAIN.TEST_DISPLAY_STEP = 1000
+__C.TRAIN.VAL_DISPLAY_STEP = 1000
 # Set the momentum parameter of the optimizer
 __C.TRAIN.MOMENTUM = 0.9
 # Set the initial learning rate
-__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.1
 # Set the GPU resource used during training process
 __C.TRAIN.GPU_MEMORY_FRACTION = 0.95
 # Set the GPU allow growth parameter during tensorflow training process
 __C.TRAIN.TF_ALLOW_GROWTH = True
 # Set the shadownet training batch size
-__C.TRAIN.BATCH_SIZE = 2
+__C.TRAIN.BATCH_SIZE = 16
 
 # Set the shadownet validation batch size
-__C.TRAIN.VAL_BATCH_SIZE = 2
+__C.TRAIN.VAL_BATCH_SIZE = 16
 # Set the learning rate decay steps
-__C.TRAIN.LR_DECAY_STEPS = 210000
+__C.TRAIN.LR_DECAY_STEPS = 80010
 # Set the learning rate decay rate
 __C.TRAIN.LR_DECAY_RATE = 0.1
+# Set the weights decay
+__C.TRAIN.WEIGHT_DECAY = 0.002
 # Set the class numbers
-__C.TRAIN.CLASSES_NUMS = 2
+__C.TRAIN.CLASSES_NUMS = 5
 # Set the image height
 __C.TRAIN.IMG_HEIGHT = 224
 # Set the image width
 __C.TRAIN.IMG_WIDTH = 224
-# Set the embedding features dims
-__C.TRAIN.EMBEDDING_FEATS_DIMS = 4
 
 # Test options
 __C.TEST = edict()
@@ -58,4 +58,8 @@ __C.TEST.GPU_MEMORY_FRACTION = 0.8
 # Set the GPU allow growth parameter during tensorflow testing process
 __C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
-__C.TEST.BATCH_SIZE = 2
+__C.TEST.BATCH_SIZE = 16
+
+__C.NET = edict()
+# Set net residual_blocks_nums
+__C.NET.RES_BLOCKS_NUMS = 5

@@ -22,7 +22,7 @@ class CNNBaseModel(object):
 
     @staticmethod
     def conv2d(inputdata, out_channel, kernel_size, padding='SAME',
-               stride=1, w_init=None, b_init=None,
+               stride=1, weight_decay=0.0002, w_init=None, b_init=None,
                split=1, use_bias=True, data_format='NHWC', name=None):
         """
         Packing the tensorflow conv2d function.
@@ -33,6 +33,7 @@ class CNNBaseModel(object):
         :param kernel_size: int so only support square kernel convolution
         :param padding: 'VALID' or 'SAME'
         :param stride: int so only support square stride
+        :param weight_decay: 0.0002
         :param w_init: initializer for convolution weights
         :param b_init: initializer for bias
         :param split: split channels as used in Alexnet mainly group for GPU memory save.
@@ -67,11 +68,12 @@ class CNNBaseModel(object):
             if b_init is None:
                 b_init = tf.constant_initializer()
 
-            w = tf.get_variable('W', filter_shape, initializer=w_init)
+            regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
+            w = tf.get_variable('W', filter_shape, initializer=w_init, regularizer=regularizer)
             b = None
 
             if use_bias:
-                b = tf.get_variable('b', [out_channel], initializer=b_init)
+                b = tf.get_variable('b', [out_channel], initializer=b_init, regularizer=regularizer)
 
             if split == 1:
                 conv = tf.nn.conv2d(inputdata, w, strides, padding, data_format=data_format)
@@ -272,7 +274,7 @@ class CNNBaseModel(object):
         return tf.nn.dropout(inputdata, keep_prob=keep_prob, noise_shape=noise_shape, name=name)
 
     @staticmethod
-    def fullyconnect(inputdata, out_dim, w_init=None, b_init=None,
+    def fullyconnect(inputdata, out_dim, weight_decay=0.0002, w_init=None, b_init=None,
                      use_bias=True, name=None):
         """
         Fully-Connected layer, takes a N>1D tensor and returns a 2D tensor.
@@ -280,6 +282,7 @@ class CNNBaseModel(object):
 
         :param inputdata:  a tensor to be flattened except for the first dimension.
         :param out_dim: output dimension
+        :param weight_decay: weights decay
         :param w_init: initializer for w. Defaults to `variance_scaling_initializer`.
         :param b_init: initializer for b. Defaults to zero
         :param use_bias: whether to use bias.
@@ -292,6 +295,8 @@ class CNNBaseModel(object):
         else:
             inputdata = tf.reshape(inputdata, tf.stack([tf.shape(inputdata)[0], -1]))
 
+        regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
+
         if w_init is None:
             w_init = tf.contrib.layers.variance_scaling_initializer()
         if b_init is None:
@@ -299,7 +304,8 @@ class CNNBaseModel(object):
 
         ret = tf.layers.dense(inputs=inputdata, activation=lambda x: tf.identity(x, name='output'),
                               use_bias=use_bias, name=name,
-                              kernel_initializer=w_init, bias_initializer=b_init,
+                              kernel_initializer=w_init, kernel_regularizer=regularizer,
+                              bias_initializer=b_init, bias_regularizer=regularizer,
                               trainable=True, units=out_dim)
         return ret
 

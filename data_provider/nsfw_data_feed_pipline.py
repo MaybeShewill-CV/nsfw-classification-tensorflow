@@ -337,3 +337,6 @@ if __name__ == '__main__':
     # test nsfw data feeder
     feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
     images, labels = feeder.inputs(16, 1)
+
+    image_shape = tf.stack([16, 224, 224, 3])
+    images = tf.reshape(shape=image_shape, tensor=images)
