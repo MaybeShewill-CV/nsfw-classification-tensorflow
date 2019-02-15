@@ -13,11 +13,9 @@ import os.path as ops
 import random
 import multiprocessing
 
-import cv2
 import glob
 import glog as log
 import tensorflow as tf
-import numpy as np
 import pprint
 
 from config import global_config
@@ -339,9 +337,3 @@ if __name__ == '__main__':
     # test nsfw data feeder
     feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
     images, labels = feeder.inputs(16, 1)
-
-    with tf.Session() as sess:
-        a, b = sess.run([images, labels])
-
-        cv2.imwrite('test.png', np.array((a[7] + 0.5) * 255, np.uint8))
-        print(b[7])
