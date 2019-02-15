@@ -21,63 +21,10 @@ import numpy as np
 import pprint
 
 from config import global_config
+from data_provider import tf_io_pipline_tools
 
 
 CFG = global_config.cfg
-
-
-def _write_example_tfrecords(example_paths, example_labels, tfrecords_path):
-    """
-    write tfrecords
-    :param example_paths:
-    :param example_labels:
-    :param tfrecords_path:
-    :return:
-    """
-    _tfrecords_dir = ops.split(tfrecords_path)[0]
-    os.makedirs(_tfrecords_dir, exist_ok=True)
-
-    log.info('Writing {:s}....'.format(tfrecords_path))
-
-    with tf.python_io.TFRecordWriter(tfrecords_path) as _writer:
-        for _index, _example_path in enumerate(example_paths):
-            _example_image = cv2.imread(_example_path, cv2.IMREAD_COLOR)
-            _example_image = cv2.resize(_example_image,
-                                        dsize=(CFG.TRAIN.IMG_WIDTH, CFG.TRAIN.IMG_HEIGHT),
-                                        interpolation=cv2.INTER_CUBIC)
-            _example_image_raw = _example_image.tostring()
-
-            _example = tf.train.Example(
-                features=tf.train.Features(
-                    feature={
-                        'height': _int64_feature(CFG.TRAIN.IMG_HEIGHT),
-                        'width': _int64_feature(CFG.TRAIN.IMG_WIDTH),
-                        'depth': _int64_feature(3),
-                        'label': _int64_feature(example_labels[_index]),
-                        'image_raw': _bytes_feature(_example_image_raw)
-                    }))
-            _writer.write(_example.SerializeToString())
-
-    log.info('Writing {:s} complete'.format(tfrecords_path))
-
-    return
-
-
-def _int64_feature(value):
-    """
-
-    :return:
-    """
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-
-def _bytes_feature(value):
-    """
-
-    :param value:
-    :return:
-    """
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
 class NsfwDataProducer(object):
@@ -87,6 +34,7 @@ class NsfwDataProducer(object):
     def __init__(self, dataset_dir):
         """
 
+        :param dataset_dir:
         """
         self._label_map = {
             'drawing': 0,
@@ -153,8 +101,13 @@ class NsfwDataProducer(object):
             for i in range(0, len(_example_paths), step_size):
                 _split_example_paths.append(_example_paths[i:i + step_size])
                 _split_example_labels.append(_example_labels[i:i + step_size])
-                _split_tfrecords_save_paths.append(
-                    ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, i + step_size)))
+
+                if i + step_size > len(_example_paths):
+                    _split_tfrecords_save_paths.append(
+                        ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, len(_example_paths))))
+                else:
+                    _split_tfrecords_save_paths.append(
+                        ops.join(save_dir, '{:s}_{:d}_{:d}.tfrecords'.format(_flags, i, i + step_size)))
 
             return _split_example_paths, _split_example_labels, _split_tfrecords_save_paths
 
@@ -173,7 +126,7 @@ class NsfwDataProducer(object):
             _split_writing_tfrecords_task(train_example_paths, train_example_labels, _flags='train')
 
         for index, example_paths in enumerate(train_example_paths_split):
-            process_pool.apply_async(func=_write_example_tfrecords,
+            process_pool.apply_async(func=tf_io_pipline_tools.write_example_tfrecords,
                                      args=(example_paths,
                                            train_example_labels_split[index],
                                            train_tfrecords_save_paths[index],))
@@ -195,7 +148,7 @@ class NsfwDataProducer(object):
             _split_writing_tfrecords_task(val_example_paths, val_example_labels, _flags='val')
 
         for index, example_paths in enumerate(val_example_paths_split):
-            process_pool.apply_async(func=_write_example_tfrecords,
+            process_pool.apply_async(func=tf_io_pipline_tools.write_example_tfrecords,
                                      args=(example_paths,
                                            val_example_labels_split[index],
                                            val_tfrecords_save_paths[index],))
@@ -217,7 +170,7 @@ class NsfwDataProducer(object):
             _split_writing_tfrecords_task(test_example_paths, test_example_labels, _flags='test')
 
         for index, example_paths in enumerate(test_example_paths_split):
-            process_pool.apply_async(func=_write_example_tfrecords,
+            process_pool.apply_async(func=tf_io_pipline_tools.write_example_tfrecords,
                                      args=(example_paths,
                                            test_example_labels_split[index],
                                            test_tfrecords_save_paths[index],))
@@ -234,18 +187,20 @@ class NsfwDataProducer(object):
         Check if source data complete
         :return:
         """
-        return ops.exists(self._drawing_image_dir) and ops.exists(self._hentai_image_dir) \
-               and ops.exists(self._neural_image_dir) and ops.exists(self._porn_image_dir) \
-               and ops.exists(self._sexy_image_dir)
+        return \
+            ops.exists(self._drawing_image_dir) and ops.exists(self._hentai_image_dir) \
+            and ops.exists(self._neural_image_dir) and ops.exists(self._porn_image_dir) \
+            and ops.exists(self._sexy_image_dir)
 
     def _is_training_example_index_file_complete(self):
         """
         Check if the training example index file is complete
         :return:
         """
-        return ops.exists(self._train_example_index_file_path) and \
-               ops.exists(self._test_example_index_file_path) and \
-               ops.exists(self._val_example_index_file_path)
+        return \
+            ops.exists(self._train_example_index_file_path) and \
+            ops.exists(self._test_example_index_file_path) and \
+            ops.exists(self._val_example_index_file_path)
 
     def _generate_training_example_index_file(self):
         """
@@ -310,11 +265,64 @@ class NsfwDataFeeder(object):
     """
     Read training examples from tfrecords for nsfw model
     """
-    def __init__(self):
+    def __init__(self, dataset_dir, flags='train'):
         """
 
+        :param dataset_dir:
+        :param flags:
         """
-        pass
+        self._dataset_dir = dataset_dir
+
+        self._tfrecords_dir = ops.join(dataset_dir, 'tfrecords')
+        if not ops.exists(self._tfrecords_dir):
+            raise ValueError('{:s} not exist, please check again'.format(self._tfrecords_dir))
+
+        self._dataset_flags = flags.lower()
+        if self._dataset_flags not in ['train', 'test', 'val']:
+            raise ValueError('flags of the data feeder should be \'train\', \'test\', \'val\'')
+
+    def inputs(self, batch_size, num_epochs):
+        """
+        dataset feed pipline input
+        :param batch_size:
+        :param num_epochs:
+        :return: A tuple (images, labels), where:
+                    * images is a float tensor with shape [batch_size, H, W, C]
+                      in the range [-0.5, 0.5].
+                    * labels is an int32 tensor with shape [batch_size] with the true label,
+                      a number in the range [0, CLASS_NUMS).
+        """
+        if not num_epochs:
+            num_epochs = None
+
+        tfrecords_file_paths = glob.glob('{:s}/{:s}*.tfrecords'.format(self._tfrecords_dir, self._dataset_flags))
+        random.shuffle(tfrecords_file_paths)
+
+        with tf.name_scope('input_tensor'):
+
+            # TFRecordDataset opens a binary file and reads one record at a time.
+            # `tfrecords_file_paths` could also be a list of filenames, which will be read in order.
+            dataset = tf.data.TFRecordDataset(tfrecords_file_paths)
+
+            # The map transformation takes a function and applies it to every element
+            # of the dataset.
+            dataset = dataset.map(tf_io_pipline_tools.decode)
+            dataset = dataset.map(tf_io_pipline_tools.augment)
+            dataset = dataset.map(tf_io_pipline_tools.normalize)
+
+            # The shuffle transformation uses a finite-sized buffer to shuffle elements
+            # in memory. The parameter is the number of elements in the buffer. For
+            # completely uniform shuffling, set the parameter to be the same as the
+            # number of elements in the dataset.
+            dataset = dataset.shuffle(buffer_size=5000)
+
+            # repeat num epochs
+            dataset = dataset.repeat(num_epochs)
+            dataset = dataset.batch(batch_size)
+
+            iterator = dataset.make_one_shot_iterator()
+
+        return iterator.get_next()
 
 
 if __name__ == '__main__':
@@ -326,4 +334,14 @@ if __name__ == '__main__':
     producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
 
     producer.print_label_map()
-    producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=50)
+    producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
+
+    # test nsfw data feeder
+    feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
+    images, labels = feeder.inputs(16, 1)
+
+    with tf.Session() as sess:
+        a, b = sess.run([images, labels])
+
+        cv2.imwrite('test.png', np.array((a[7] + 0.5) * 255, np.uint8))
+        print(b[7])
