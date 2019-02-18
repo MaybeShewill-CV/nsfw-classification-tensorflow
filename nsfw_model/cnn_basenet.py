@@ -45,6 +45,7 @@ class CNNBaseModel(object):
             in_shape = inputdata.get_shape().as_list()
             channel_axis = 3 if data_format == 'NHWC' else 1
             in_channel = in_shape[channel_axis]
+
             assert in_channel is not None, "[Conv2D] Input cannot have unknown channel!"
             assert in_channel % split == 0
             assert out_channel % split == 0
@@ -426,6 +427,7 @@ class CNNBaseModel(object):
         with tf.variable_scope(name):
             in_shape = input_tensor.get_shape().as_list()
             in_channel = in_shape[3]
+
             assert in_channel is not None, "[Conv2D] Input cannot have unknown channel!"
 
             padding = padding.upper()

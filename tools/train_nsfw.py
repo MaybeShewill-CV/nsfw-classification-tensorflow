@@ -39,7 +39,7 @@ def init_args():
     return parser.parse_args()
 
 
-def top_k_error(predictions, labels, k=1):
+def calculate_top_k_error(predictions, labels, k=1):
     """
     Calculate the top-k error
     :param predictions: 2D tensor with shape [batch_size, num_labels]
@@ -47,7 +47,7 @@ def top_k_error(predictions, labels, k=1):
     :param k: int
     :return: tensor with shape [1]
     """
-    batch_size = predictions.get_shape().as_list()[0]
+    batch_size = CFG.TRAIN.BATCH_SIZE
     in_top1 = tf.to_float(tf.nn.in_top_k(predictions, labels, k=k))
     num_correct = tf.reduce_sum(in_top1)
 
@@ -71,17 +71,14 @@ def train_net(dataset_dir, weights_path=None):
     with tf.device('/gpu:1'):
         # set nsfw classification model
         phase = tf.placeholder(dtype=tf.string, shape=None, name='net_phase')
-        example_tensor_shape = tf.stack([CFG.TRAIN.BATCH_SIZE,
-                                         CFG.TRAIN.IMG_HEIGHT,
-                                         CFG.TRAIN.IMG_WIDTH,
-                                         3])
+
         # set nsfw net
         nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
 
         # compute train loss
         train_images, train_labels = train_dataset.inputs(batch_size=CFG.TRAIN.BATCH_SIZE,
                                                           num_epochs=1)
-        train_images = tf.reshape(train_images, example_tensor_shape)
+        # train_images = tf.reshape(train_images, example_tensor_shape)
         train_loss = nsfw_net.compute_loss(input_tensor=train_images,
                                            labels=train_labels,
                                            residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
@@ -94,12 +91,12 @@ def train_net(dataset_dir, weights_path=None):
                                           reuse=True)
 
         train_predictions = tf.nn.softmax(train_logits)
-        train_top1_error = top_k_error(train_predictions, train_labels, 1)
+        train_top1_error = calculate_top_k_error(train_predictions, train_labels, 1)
 
         # compute val loss
         val_images, val_labels = val_dataset.inputs(batch_size=CFG.TRAIN.VAL_BATCH_SIZE,
                                                     num_epochs=1)
-        val_images = tf.reshape(val_images, example_tensor_shape)
+        # val_images = tf.reshape(val_images, example_tensor_shape)
         val_loss = nsfw_net.compute_loss(input_tensor=val_images,
                                          labels=val_labels,
                                          residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
@@ -112,7 +109,7 @@ def train_net(dataset_dir, weights_path=None):
                                         reuse=True)
 
         val_predictions = tf.nn.softmax(val_logits)
-        val_top1_error = top_k_error(val_predictions, val_labels, 1)
+        val_top1_error = calculate_top_k_error(val_predictions, val_labels, 1)
 
     # set tensorflow summary
     tboard_save_path = 'tboard/nsfw_cls'
