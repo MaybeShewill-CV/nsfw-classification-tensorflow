@@ -8,15 +8,15 @@
 """
 设置全局变量
 """
-from easydict import EasyDict as edict
+import easydict
 
-__C = edict()
+__C = easydict.EasyDict()
 # Consumers can get config by: from config import cfg
 
 cfg = __C
 
 # Train options
-__C.TRAIN = edict()
+__C.TRAIN = easydict.EasyDict()
 
 # Set the shadownet training epochs
 __C.TRAIN.EPOCHS = 160010
@@ -51,7 +51,7 @@ __C.TRAIN.IMG_HEIGHT = 224
 __C.TRAIN.IMG_WIDTH = 224
 
 # Test options
-__C.TEST = edict()
+__C.TEST = easydict.EasyDict()
 
 # Set the GPU resource used during testing process
 __C.TEST.GPU_MEMORY_FRACTION = 0.8
@@ -60,6 +60,6 @@ __C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
 __C.TEST.BATCH_SIZE = 32
 
-__C.NET = edict()
+__C.NET = easydict.EasyDict()
 # Set net residual_blocks_nums
 __C.NET.RES_BLOCKS_NUMS = 5
