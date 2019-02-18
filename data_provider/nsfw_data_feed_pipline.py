@@ -315,12 +315,12 @@ class NsfwDataFeeder(object):
             dataset = dataset.shuffle(buffer_size=5000)
 
             # repeat num epochs
-            dataset = dataset.repeat(num_epochs)
+            dataset = dataset.repeat()
             dataset = dataset.batch(batch_size)
 
             iterator = dataset.make_one_shot_iterator()
 
-        return iterator.get_next()
+        return iterator.get_next(name='{:s}_IteratorGetNext'.format(self._dataset_flags))
 
 
 if __name__ == '__main__':
@@ -329,14 +329,27 @@ if __name__ == '__main__':
     """
 
     # test nsfw data producer
-    producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
-
-    producer.print_label_map()
-    producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
+    # producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
+    #
+    # producer.print_label_map()
+    # producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
 
     # test nsfw data feeder
     feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
-    images, labels = feeder.inputs(16, 1)
 
-    image_shape = tf.stack([16, 224, 224, 3])
-    images = tf.reshape(shape=image_shape, tensor=images)
+    index = 0
+
+    with tf.Session() as sess:
+        try:
+            while True:
+                images, labels = feeder.inputs(32, 1)
+
+                a, b = sess.run([images, labels])
+
+                index += 1
+
+                print(a.shape)
+        except tf.errors.OutOfRangeError as err:
+            print(err)
+        finally:
+            print(index)
