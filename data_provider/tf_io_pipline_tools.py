@@ -101,7 +101,7 @@ def decode(serialized_example):
 
     # decode image
     image = tf.decode_raw(features['image_raw'], tf.uint8)
-    image_shape = tf.stack([features['height'], features['width'], features['depth']])
+    image_shape = tf.stack([CFG.TRAIN.IMG_HEIGHT, CFG.TRAIN.IMG_WIDTH, 3])
     image = tf.reshape(image, image_shape)
 
     # Convert label from a scalar int64 tensor to an int32 scalar.
