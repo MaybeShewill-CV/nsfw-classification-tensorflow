@@ -108,7 +108,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
             raise ValueError('Output and input channel does not match in residual blocks!!!')
 
         # The first conv layer of the first residual block does not need to be normalized and relu-ed.
-        with tf.variable_scope('conv1_in_block'):
+        with tf.variable_scope('conv_1_in_block'):
             if first_block:
                 conv_1 = self.conv2d(inputdata=input_tensor,
                                      out_channel=output_channel,
@@ -124,7 +124,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
                                                   stride=stride,
                                                   name='conv_1')
 
-        with tf.variable_scope('conv2_in_block'):
+        with tf.variable_scope('conv_2_in_block'):
             conv_2 = self._bn_relu_conv_layer(input_tensor=conv_1,
                                               k_size=3,
                                               out_dims=output_channel,
@@ -161,7 +161,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         layers = []
 
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
-            with tf.variable_scope('conv0', reuse=reuse):
+            with tf.variable_scope('conv_0', reuse=reuse):
                 conv_0 = self._conv_bn_relu_layer(input_tensor=input_tensor,
                                                   k_size=3,
                                                   out_dims=16,
@@ -259,11 +259,11 @@ if __name__ == '__main__':
                                 name='net',
                                 reuse=True)
 
-    inference_logits = net.inference(input_tensor=image_tensor,
-                                     residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
-                                     name='net',
-                                     reuse=True)
+    logits = net.inference(input_tensor=image_tensor,
+                           residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
+                           name='net',
+                           reuse=True)
 
     print(loss.get_shape().as_list())
     print(loss_val.get_shape().as_list())
-    print(inference_logits.get_shape().as_list())
+    print(logits.get_shape().as_list())

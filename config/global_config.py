@@ -33,12 +33,11 @@ __C.TRAIN.GPU_MEMORY_FRACTION = 0.95
 # Set the GPU allow growth parameter during tensorflow training process
 __C.TRAIN.TF_ALLOW_GROWTH = True
 # Set the shadownet training batch size
-__C.TRAIN.BATCH_SIZE = 32
-
+__C.TRAIN.BATCH_SIZE = 24
 # Set the shadownet validation batch size
-__C.TRAIN.VAL_BATCH_SIZE = 32
+__C.TRAIN.VAL_BATCH_SIZE = 24
 # Set the learning rate decay steps
-__C.TRAIN.LR_DECAY_STEPS = 80010
+__C.TRAIN.LR_DECAY_STEPS = 5000
 # Set the learning rate decay rate
 __C.TRAIN.LR_DECAY_RATE = 0.1
 # Set the weights decay
@@ -49,6 +48,8 @@ __C.TRAIN.CLASSES_NUMS = 5
 __C.TRAIN.IMG_HEIGHT = 224
 # Set the image width
 __C.TRAIN.IMG_WIDTH = 224
+# Set the GPU nums
+__C.TRAIN.GPU_NUM = 2
 
 # Test options
 __C.TEST = easydict.EasyDict()
@@ -58,7 +59,7 @@ __C.TEST.GPU_MEMORY_FRACTION = 0.8
 # Set the GPU allow growth parameter during tensorflow testing process
 __C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
-__C.TEST.BATCH_SIZE = 32
+__C.TEST.BATCH_SIZE = 24
 
 __C.NET = easydict.EasyDict()
 # Set net residual_blocks_nums
