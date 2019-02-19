@@ -407,8 +407,12 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
                                             tensor=avg_val_loss)
     avg_val_top1_err_scalar = tf.summary.scalar(name='average_val_top1_error',
                                                 tensor=avg_val_top1_error)
+    learning_rate_scalar = tf.summary.scalar(name='learning_rate_scalar',
+                                             tensor=learning_rate)
 
-    train_merge_summary_op = tf.summary.merge([avg_train_loss_scalar, avg_train_top1_err_scalar])
+    train_merge_summary_op = tf.summary.merge([avg_train_loss_scalar,
+                                               avg_train_top1_err_scalar,
+                                               learning_rate_scalar])
 
     val_merge_summary_op = tf.summary.merge([avg_val_loss_scalar, avg_val_top1_err_scalar])
 
@@ -514,6 +518,10 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
 
             if epoch % 2000 == 0:
                 saver.save(sess=sess, save_path=model_save_path, global_step=epoch)
+
+            if epoch % 60000 == 0 and epoch != 0:
+                learning_rate *= 0.1
+
     sess.close()
 
 
