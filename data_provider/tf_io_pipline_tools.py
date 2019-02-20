@@ -124,10 +124,11 @@ def augment(image, label):
 
 def normalize(image, label):
     """
-    Normalize the image data from [0, 255] ----> [-0.5, 0.5]
+    Normalize the image data from [0, 255] ----> [-1.0, 1.0]
     :param image:
     :param label:
     :return:
     """
     image = tf.cast(image, tf.float32) * (1. / 255) - 0.5
+    image *= 2
     return image, label
