@@ -11,7 +11,7 @@ NSFW Classification Net Model
 import tensorflow as tf
 
 from nsfw_model import cnn_basenet
-from config import  global_config
+from config import global_config
 
 
 CFG = global_config.cfg
@@ -52,6 +52,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         with tf.variable_scope(name_or_scope=name):
 
             bn = self.layerbn(inputdata=input_tensor, is_training=self._is_training, name='bn')
+            # gn = self.layergn(inputdata=input_tensor, group_size=16, name='gn')
 
             relu = self.relu(inputdata=bn, name='relu')
 
@@ -59,7 +60,6 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
                                out_channel=out_dims,
                                kernel_size=k_size,
                                stride=stride,
-                               weight_decay=CFG.TRAIN.WEIGHT_DECAY,
                                use_bias=False,
                                name='conv')
         return conv
@@ -79,10 +79,10 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
                                out_channel=out_dims,
                                kernel_size=k_size,
                                stride=stride,
-                               weight_decay=CFG.TRAIN.WEIGHT_DECAY,
                                use_bias=False,
                                name='conv')
             bn = self.layerbn(inputdata=conv, is_training=self._is_training, name='bn')
+            # gn = self.layergn(inputdata=conv, group_size=16, name='gn')
 
             relu = self.relu(inputdata=bn, name='relu')
 
@@ -114,7 +114,6 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
                                      out_channel=output_channel,
                                      kernel_size=3,
                                      stride=1,
-                                     weight_decay=CFG.TRAIN.WEIGHT_DECAY,
                                      use_bias=False,
                                      name='conv_1')
             else:
@@ -193,6 +192,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
             with tf.variable_scope('fc', reuse=reuse):
 
                 bn = self.layerbn(inputdata=layers[-1], is_training=self._is_training, name='bn')
+                # gn = self.layergn(inputdata=layers[-1], group_size=32, name='gn')
 
                 relu = self.relu(inputdata=bn, name='relu')
 
@@ -200,7 +200,6 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
 
                 final_logits = self.fullyconnect(inputdata=global_pool,
                                                  out_dim=CFG.TRAIN.CLASSES_NUMS,
-                                                 weight_decay=CFG.TRAIN.WEIGHT_DECAY,
                                                  w_init=tf.initializers.variance_scaling(distribution='uniform'),
                                                  b_init=tf.zeros_initializer(),
                                                  use_bias=True,
@@ -230,11 +229,13 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=inference_logits,
                                                                        labels=labels,
                                                                        name='cross_entropy_per_example')
-        loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
+        cross_entropy_loss = tf.reduce_mean(cross_entropy, name='cross_entropy')
 
-        regu_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        l2_loss = CFG.TRAIN.WEIGHT_DECAY * tf.add_n(
+            [tf.nn.l2_loss(tf.cast(vv, tf.float32)) for vv in tf.trainable_variables()
+             if 'bn' not in vv.name])
 
-        total_loss = tf.add_n([loss] + regu_losses)
+        total_loss = cross_entropy_loss + l2_loss
 
         return total_loss
 
