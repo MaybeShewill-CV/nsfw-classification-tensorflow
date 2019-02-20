@@ -92,21 +92,21 @@ def average_gradients(tower_grads):
     return average_grads
 
 
-def compute_net_gradients(images, labels, net, optimizer=None, is_validation=False):
+def compute_net_gradients(images, labels, net, optimizer=None, is_net_first_initialized=False):
     """
     Calculate gradients for single GPU
     :param images: images for training
     :param labels: labels corresponding to images
     :param net: classification model
     :param optimizer: network optimizer
-    :param is_validation: if is validation work
+    :param is_net_first_initialized: if the network is initialized
     :return:
     """
     net_loss = net.compute_loss(input_tensor=images,
                                 labels=labels,
                                 residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                 name='nsfw_cls_model',
-                                reuse=is_validation)
+                                reuse=is_net_first_initialized)
     net_logits = net.inference(input_tensor=images,
                                residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                name='nsfw_cls_model',
@@ -115,7 +115,7 @@ def compute_net_gradients(images, labels, net, optimizer=None, is_validation=Fal
     net_predictions = tf.nn.softmax(net_logits)
     net_top1_error = calculate_top_k_error(net_predictions, labels, 1)
 
-    tf.get_variable_scope().reuse_variables()
+    # tf.get_variable_scope().reuse_variables()
 
     if optimizer is not None:
         grads = optimizer.compute_gradients(net_loss)
@@ -140,11 +140,9 @@ def train_net(dataset_dir, weights_path=None):
                                                         flags='val')
 
     with tf.device('/gpu:1'):
-        # set nsfw classification model
-        phase = tf.placeholder(dtype=tf.string, shape=None, name='net_phase')
-
         # set nsfw net
-        nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
+        nsfw_net = nsfw_classification_net.NSFWNet(phase=tf.constant('train', dtype=tf.string))
+        nsfw_net_val = nsfw_classification_net.NSFWNet(phase=tf.constant('test', dtype=tf.string))
 
         # compute train loss
         train_images, train_labels = train_dataset.inputs(batch_size=CFG.TRAIN.BATCH_SIZE,
@@ -167,16 +165,16 @@ def train_net(dataset_dir, weights_path=None):
         val_images, val_labels = val_dataset.inputs(batch_size=CFG.TRAIN.VAL_BATCH_SIZE,
                                                     num_epochs=1)
         # val_images = tf.reshape(val_images, example_tensor_shape)
-        val_loss = nsfw_net.compute_loss(input_tensor=val_images,
-                                         labels=val_labels,
-                                         residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
-                                         name='nsfw_cls_model',
-                                         reuse=True)
+        val_loss = nsfw_net_val.compute_loss(input_tensor=val_images,
+                                             labels=val_labels,
+                                             residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
+                                             name='nsfw_cls_model',
+                                             reuse=True)
 
-        val_logits = nsfw_net.inference(input_tensor=val_images,
-                                        residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
-                                        name='nsfw_cls_model',
-                                        reuse=True)
+        val_logits = nsfw_net_val.inference(input_tensor=val_images,
+                                            residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
+                                            name='nsfw_cls_model',
+                                            reuse=True)
 
         val_predictions = tf.nn.softmax(val_logits)
         val_top1_error = calculate_top_k_error(val_predictions, val_labels, 1)
@@ -211,11 +209,13 @@ def train_net(dataset_dir, weights_path=None):
     # set optimizer
     with tf.device('/gpu:1'):
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.train.polynomial_decay(
+        learning_rate = tf.train.exponential_decay(
             learning_rate=CFG.TRAIN.LEARNING_RATE,
             global_step=global_step,
-            decay_steps=tf.cast(CFG.TRAIN.EPOCHS / CFG.TRAIN.LR_DECAY_STEPS, tf.int32),
-            power=0.9)
+            decay_steps=CFG.TRAIN.LR_DECAY_STEPS,
+            decay_rate=CFG.TRAIN.LR_DECAY_RATE,
+            staircase=True
+        )
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
@@ -262,15 +262,12 @@ def train_net(dataset_dir, weights_path=None):
             # training part
             t_start = time.time()
 
-            phase_train = 'train'
-
             _, train_loss_value, train_top1_err_value, train_summary, lr = \
                 sess.run(fetches=[optimizer,
                                   train_loss,
                                   train_top1_error,
                                   train_merge_summary_op,
-                                  learning_rate],
-                         feed_dict={phase: phase_train})
+                                  learning_rate])
 
             if math.isnan(train_loss_value):
                 log.error('Train loss is nan')
@@ -285,11 +282,10 @@ def train_net(dataset_dir, weights_path=None):
             # validation part
             t_start_val = time.time()
 
-            phase_val = 'test'
-
             val_loss_value, val_top1_err_value, val_summary = \
-                sess.run([val_loss, val_top1_error, val_merge_summary_op],
-                         feed_dict={phase: phase_val})
+                sess.run(fetches=[val_loss,
+                                  val_top1_error,
+                                  val_merge_summary_op])
 
             summary_writer.add_summary(val_summary, global_step=epoch)
 
@@ -334,11 +330,10 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
                                                           flags='train')
     val_dataset = nsfw_data_feed_pipline.NsfwDataFeeder(dataset_dir=dataset_dir,
                                                         flags='val')
-    # set nsfw classification model
-    phase = tf.placeholder(dtype=tf.string, shape=None, name='net_phase')
 
     # set nsfw net
-    nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
+    nsfw_net = nsfw_classification_net.NSFWNet(phase=tf.constant('train', dtype=tf.string))
+    nsfw_net_val = nsfw_classification_net.NSFWNet(phase=tf.constant('test', dtype=tf.string))
 
     # fetch train and validation data
     train_images, train_labels = train_dataset.inputs(
@@ -352,6 +347,7 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
     train_tower_top1_error = []
     val_tower_loss = []
     val_tower_top1_error = []
+    batchnorm_updates = None
 
     # set learning rate
     global_step = tf.Variable(0, trainable=False)
@@ -364,24 +360,32 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
     )
 
     # set optimizer
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate=learning_rate, momentum=0.9)
+    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9)
 
     # set distributed train op
     with tf.variable_scope(tf.get_variable_scope()):
+        is_network_initialized = False
         for i in range(CFG.TRAIN.GPU_NUM):
             with tf.device('/gpu:{:d}'.format(i)):
                 with tf.name_scope('tower_{:d}'.format(i)) as scope:
                     train_loss, train_top1_error, grads = compute_net_gradients(
-                        train_images, train_labels, nsfw_net, optimizer, is_validation=False)
+                        train_images, train_labels, nsfw_net, optimizer,
+                        is_net_first_initialized=is_network_initialized)
+
+                    is_network_initialized = True
+
+                    # Only use the mean and var in the first gpu tower to update the parameter
+                    # TODO implement batch normalization for distributed device (luoyao@baidu.com)
+                    if i == 0:
+                        batchnorm_updates = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
                     tower_grads.append(grads)
                     train_tower_loss.append(train_loss)
                     train_tower_top1_error.append(train_top1_error)
                 with tf.name_scope('validation_{:d}'.format(i)) as scope:
                     val_loss, val_top1_error, _ = compute_net_gradients(
-                        val_images, val_labels, nsfw_net, optimizer, is_validation=True)
+                        val_images, val_labels, nsfw_net_val, optimizer,
+                        is_net_first_initialized=is_network_initialized)
                     val_tower_loss.append(val_loss)
                     val_tower_top1_error.append(val_top1_error)
 
@@ -391,7 +395,17 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
     avg_val_loss = tf.reduce_mean(val_tower_loss)
     avg_val_top1_error = tf.reduce_mean(val_tower_top1_error)
 
-    train_op = optimizer.apply_gradients(grads, global_step=global_step)
+    # Track the moving averages of all trainable variables
+    variable_averages = tf.train.ExponentialMovingAverage(
+        CFG.TRAIN.MOVING_AVERAGE_DECAY, num_updates=global_step)
+    variables_to_average = tf.trainable_variables() + tf.moving_average_variables()
+    variables_averages_op = variable_averages.apply(variables_to_average)
+
+    # Group all the op needed for training
+    batchnorm_updates_op = tf.group(*batchnorm_updates)
+    apply_gradient_op = optimizer.apply_gradients(grads, global_step=global_step)
+    train_op = tf.group(apply_gradient_op, variables_averages_op,
+                        batchnorm_updates_op)
 
     # set tensorflow summary
     tboard_save_path = 'tboard/nsfw_cls'
@@ -461,15 +475,12 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
             # training part
             t_start = time.time()
 
-            phase_train = 'train'
-
             _, train_loss_value, train_top1_err_value, train_summary, lr = \
                 sess.run(fetches=[train_op,
                                   avg_train_loss,
                                   avg_train_top1_error,
                                   train_merge_summary_op,
-                                  learning_rate],
-                         feed_dict={phase: phase_train})
+                                  learning_rate])
 
             if math.isnan(train_loss_value):
                 log.error('Train loss is nan')
@@ -484,13 +495,10 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
             # validation part
             t_start_val = time.time()
 
-            phase_val = 'test'
-
             val_loss_value, val_top1_err_value, val_summary = \
                 sess.run(fetches=[avg_val_loss,
                                   avg_val_top1_error,
-                                  val_merge_summary_op],
-                         feed_dict={phase: phase_val})
+                                  val_merge_summary_op])
 
             summary_writer.add_summary(val_summary, global_step=epoch)
 
