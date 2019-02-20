@@ -9,6 +9,8 @@
 The base convolution neural networks mainly implement some useful cnn functions
 """
 import tensorflow as tf
+from tensorflow.python.training import moving_averages
+from tensorflow.contrib.framework import add_model_variable
 import numpy as np
 
 
@@ -22,7 +24,7 @@ class CNNBaseModel(object):
 
     @staticmethod
     def conv2d(inputdata, out_channel, kernel_size, padding='SAME',
-               stride=1, weight_decay=0.0002, w_init=None, b_init=None,
+               stride=1, w_init=None, b_init=None,
                split=1, use_bias=True, data_format='NHWC', name=None):
         """
         Packing the tensorflow conv2d function.
@@ -33,7 +35,6 @@ class CNNBaseModel(object):
         :param kernel_size: int so only support square kernel convolution
         :param padding: 'VALID' or 'SAME'
         :param stride: int so only support square stride
-        :param weight_decay: 0.0002
         :param w_init: initializer for convolution weights
         :param b_init: initializer for bias
         :param split: split channels as used in Alexnet mainly group for GPU memory save.
@@ -69,12 +70,11 @@ class CNNBaseModel(object):
             if b_init is None:
                 b_init = tf.constant_initializer()
 
-            regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
-            w = tf.get_variable('W', filter_shape, initializer=w_init, regularizer=regularizer)
+            w = tf.get_variable('W', filter_shape, initializer=w_init)
             b = None
 
             if use_bias:
-                b = tf.get_variable('b', [out_channel], initializer=b_init, regularizer=regularizer)
+                b = tf.get_variable('b', [out_channel], initializer=b_init)
 
             if split == 1:
                 conv = tf.nn.conv2d(inputdata, w, strides, padding, data_format=data_format)
@@ -275,7 +275,7 @@ class CNNBaseModel(object):
         return tf.nn.dropout(inputdata, keep_prob=keep_prob, noise_shape=noise_shape, name=name)
 
     @staticmethod
-    def fullyconnect(inputdata, out_dim, weight_decay=0.0002, w_init=None, b_init=None,
+    def fullyconnect(inputdata, out_dim, w_init=None, b_init=None,
                      use_bias=True, name=None):
         """
         Fully-Connected layer, takes a N>1D tensor and returns a 2D tensor.
@@ -283,7 +283,6 @@ class CNNBaseModel(object):
 
         :param inputdata:  a tensor to be flattened except for the first dimension.
         :param out_dim: output dimension
-        :param weight_decay: weights decay
         :param w_init: initializer for w. Defaults to `variance_scaling_initializer`.
         :param b_init: initializer for b. Defaults to zero
         :param use_bias: whether to use bias.
@@ -296,8 +295,6 @@ class CNNBaseModel(object):
         else:
             inputdata = tf.reshape(inputdata, tf.stack([tf.shape(inputdata)[0], -1]))
 
-        regularizer = tf.contrib.layers.l2_regularizer(scale=weight_decay)
-
         if w_init is None:
             w_init = tf.contrib.layers.variance_scaling_initializer()
         if b_init is None:
@@ -305,22 +302,142 @@ class CNNBaseModel(object):
 
         ret = tf.layers.dense(inputs=inputdata, activation=lambda x: tf.identity(x, name='output'),
                               use_bias=use_bias, name=name,
-                              kernel_initializer=w_init, kernel_regularizer=regularizer,
-                              bias_initializer=b_init, bias_regularizer=regularizer,
+                              kernel_initializer=w_init,
+                              bias_initializer=b_init,
                               trainable=True, units=out_dim)
         return ret
 
     @staticmethod
-    def layerbn(inputdata, is_training, name):
+    def layerbn(inputdata, is_training, name, momentum=0.999, eps=1e-3):
         """
 
         :param inputdata:
         :param is_training:
         :param name:
+        :param momentum:
+        :param eps:
         :return:
         """
 
-        return tf.layers.batch_normalization(inputs=inputdata, training=is_training, name=name)
+        return tf.layers.batch_normalization(
+            inputs=inputdata, training=is_training, name=name, momentum=momentum, epsilon=eps)
+
+    @staticmethod
+    def layerbn_distributed(list_input, stats_mode, data_format='NHWC',
+                            float_type=tf.float32, trainable=True,
+                            use_gamma=True, use_beta=True, bn_epsilon=1e-5,
+                            bn_ema=0.9, name='BatchNorm'):
+        """
+        Batch norm for distributed training process
+        :param list_input:
+        :param stats_mode:
+        :param data_format:
+        :param float_type:
+        :param trainable:
+        :param use_gamma:
+        :param use_beta:
+        :param bn_epsilon:
+        :param bn_ema:
+        :param name:
+        :return:
+        """
+
+        def _get_bn_variables(_n_out, _use_scale, _use_bias, _trainable, _float_type):
+
+            if _use_bias:
+                _beta = tf.get_variable('beta', [_n_out],
+                                        initializer=tf.constant_initializer(),
+                                        trainable=_trainable,
+                                        dtype=_float_type)
+            else:
+                _beta = tf.zeros([_n_out], name='beta')
+            if _use_scale:
+                _gamma = tf.get_variable('gamma', [_n_out],
+                                         initializer=tf.constant_initializer(1.0),
+                                         trainable=_trainable,
+                                         dtype=_float_type)
+            else:
+                _gamma = tf.ones([_n_out], name='gamma')
+
+            _moving_mean = tf.get_variable('moving_mean', [_n_out],
+                                           initializer=tf.constant_initializer(),
+                                           trainable=False,
+                                           dtype=_float_type)
+            _moving_var = tf.get_variable('moving_variance', [_n_out],
+                                          initializer=tf.constant_initializer(1),
+                                          trainable=False,
+                                          dtype=_float_type)
+            return _beta, _gamma, _moving_mean, _moving_var
+
+        def _update_bn_ema(_xn, _batch_mean, _batch_var, _moving_mean, _moving_var, _decay):
+
+            _update_op1 = moving_averages.assign_moving_average(
+                _moving_mean, _batch_mean, _decay, zero_debias=False,
+                name='mean_ema_op')
+            _update_op2 = moving_averages.assign_moving_average(
+                _moving_var, _batch_var, _decay, zero_debias=False,
+                name='var_ema_op')
+            add_model_variable(moving_mean)
+            add_model_variable(moving_var)
+
+            # seems faster than delayed update, but might behave otherwise in distributed settings.
+            with tf.control_dependencies([_update_op1, _update_op2]):
+                return tf.identity(xn, name='output')
+
+        # ======================== Checking valid values =========================
+        if data_format not in ['NHWC', 'NCHW']:
+            raise TypeError(
+                "Only two data formats are supported at this moment: 'NHWC' or 'NCHW', "
+                "%s is an unknown data format." % data_format)
+        assert type(list_input) == list
+
+        # ======================== Setting default values =========================
+        shape = list_input[0].get_shape().as_list()
+        assert len(shape) in [2, 4]
+        n_out = shape[-1]
+        if data_format == 'NCHW':
+            n_out = shape[1]
+
+        # ======================== Main operations =============================
+        means = []
+        square_means = []
+        for i in range(len(list_input)):
+            with tf.device('/gpu:%d' % i):
+                batch_mean = tf.reduce_mean(list_input[i], [0, 1, 2])
+                batch_square_mean = tf.reduce_mean(tf.square(list_input[i]), [0, 1, 2])
+                means.append(batch_mean)
+                square_means.append(batch_square_mean)
+
+        # if your GPUs have NVLinks and you've install NCCL2, you can change `/cpu:0` to `/gpu:0`
+        with tf.device('/cpu:0'):
+            shape = tf.shape(list_input[0])
+            num = shape[0] * shape[1] * shape[2] * len(list_input)
+            mean = tf.reduce_mean(means, axis=0)
+            var = tf.reduce_mean(square_means, axis=0) - tf.square(mean)
+            var *= tf.cast(num, float_type) / tf.cast(num - 1, float_type)  # unbiased variance
+
+        list_output = []
+        for i in range(len(list_input)):
+            with tf.device('/gpu:%d' % i):
+                with tf.variable_scope(name, reuse=i > 0):
+                    beta, gamma, moving_mean, moving_var = _get_bn_variables(
+                        n_out, use_gamma, use_beta, trainable, float_type)
+
+                    if 'train' in stats_mode:
+                        xn = tf.nn.batch_normalization(
+                            list_input[i], mean, var, beta, gamma, bn_epsilon)
+                        if tf.get_variable_scope().reuse or 'gather' not in stats_mode:
+                            list_output.append(xn)
+                        else:
+                            # gather stats and it is the main gpu device.
+                            xn = _update_bn_ema(xn, mean, var, moving_mean, moving_var, bn_ema)
+                            list_output.append(xn)
+                    else:
+                        xn = tf.nn.batch_normalization(
+                            list_input[i], moving_mean, moving_var, beta, gamma, bn_epsilon)
+                        list_output.append(xn)
+
+        return list_output
 
     @staticmethod
     def layergn(inputdata, name, group_size=32, esp=1e-5):
@@ -383,6 +500,7 @@ class CNNBaseModel(object):
         :param activation: whether to apply a activation func to deconv result
         :param use_bias:  whether to use bias.
         :param data_format: default set to NHWC according tensorflow
+        :param trainable:
         :return: tf.Tensor named ``output``
         """
         with tf.variable_scope(name):
