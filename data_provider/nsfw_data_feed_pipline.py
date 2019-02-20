@@ -279,6 +279,38 @@ class NsfwDataFeeder(object):
         if self._dataset_flags not in ['train', 'test', 'val']:
             raise ValueError('flags of the data feeder should be \'train\', \'test\', \'val\'')
 
+        self._label_map = {
+            'drawing': 0,
+            'hentai': 1,
+            'neural': 2,
+            'porn': 3,
+            'sexy': 4
+        }
+
+        self._prediction_map = {
+            0: 'drawing',
+            1: 'hentai',
+            2: 'neural',
+            3: 'porn',
+            4: 'sexy'
+        }
+
+    @property
+    def label_map(self):
+        """
+
+        :return:
+        """
+        return self._label_map
+
+    @property
+    def prediction_map(self):
+        """
+
+        :return:
+        """
+        return self._prediction_map
+
     def inputs(self, batch_size, num_epochs):
         """
         dataset feed pipline input
