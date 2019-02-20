@@ -21,7 +21,6 @@ import pprint
 from config import global_config
 from data_provider import tf_io_pipline_tools
 
-
 CFG = global_config.cfg
 
 
@@ -34,13 +33,7 @@ class NsfwDataProducer(object):
 
         :param dataset_dir:
         """
-        self._label_map = {
-            'drawing': 0,
-            'hentai': 1,
-            'neural': 2,
-            'porn': 3,
-            'sexy': 4
-        }
+        self._label_map = global_config.NSFW_LABEL_MAP
 
         self._dataset_dir = dataset_dir
 
@@ -279,21 +272,9 @@ class NsfwDataFeeder(object):
         if self._dataset_flags not in ['train', 'test', 'val']:
             raise ValueError('flags of the data feeder should be \'train\', \'test\', \'val\'')
 
-        self._label_map = {
-            'drawing': 0,
-            'hentai': 1,
-            'neural': 2,
-            'porn': 3,
-            'sexy': 4
-        }
+        self._label_map = global_config.NSFW_LABEL_MAP
 
-        self._prediction_map = {
-            0: 'drawing',
-            1: 'hentai',
-            2: 'neural',
-            3: 'porn',
-            4: 'sexy'
-        }
+        self._prediction_map = global_config.NSFW_PREDICT_MAP
 
     @property
     def label_map(self):
@@ -344,10 +325,11 @@ class NsfwDataFeeder(object):
             # in memory. The parameter is the number of elements in the buffer. For
             # completely uniform shuffling, set the parameter to be the same as the
             # number of elements in the dataset.
-            dataset = dataset.shuffle(buffer_size=5000)
+            if self._dataset_flags != 'test':
+                dataset = dataset.shuffle(buffer_size=5000)
+                # repeat num epochs
+                dataset = dataset.repeat()
 
-            # repeat num epochs
-            dataset = dataset.repeat()
             dataset = dataset.batch(batch_size)
 
             iterator = dataset.make_one_shot_iterator()
@@ -383,5 +365,4 @@ if __name__ == '__main__':
                 print(a.shape)
         except tf.errors.OutOfRangeError as err:
             print(err)
-        finally:
             print(index)
