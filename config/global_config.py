@@ -33,15 +33,17 @@ __C.TRAIN.GPU_MEMORY_FRACTION = 0.95
 # Set the GPU allow growth parameter during tensorflow training process
 __C.TRAIN.TF_ALLOW_GROWTH = True
 # Set the shadownet training batch size
-__C.TRAIN.BATCH_SIZE = 24
+__C.TRAIN.BATCH_SIZE = 48
 # Set the shadownet validation batch size
-__C.TRAIN.VAL_BATCH_SIZE = 24
+__C.TRAIN.VAL_BATCH_SIZE = 48
 # Set the learning rate decay steps
 __C.TRAIN.LR_DECAY_STEPS = 40000
 # Set the learning rate decay rate
 __C.TRAIN.LR_DECAY_RATE = 0.1
 # Set the weights decay
-__C.TRAIN.WEIGHT_DECAY = 0.002
+__C.TRAIN.WEIGHT_DECAY = 0.0002
+# Set the train moving average decay
+__C.TRAIN.MOVING_AVERAGE_DECAY = 0.9999
 # Set the class numbers
 __C.TRAIN.CLASSES_NUMS = 5
 # Set the image height
@@ -59,8 +61,13 @@ __C.TEST.GPU_MEMORY_FRACTION = 0.8
 # Set the GPU allow growth parameter during tensorflow testing process
 __C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
-__C.TEST.BATCH_SIZE = 24
+__C.TEST.BATCH_SIZE = 48
 
 __C.NET = easydict.EasyDict()
 # Set net residual_blocks_nums
 __C.NET.RES_BLOCKS_NUMS = 5
+
+# Set nsfw dataset label map
+NSFW_LABEL_MAP = {'drawing': 0, 'hentai': 1, 'neural': 2, 'porn': 3, 'sexy': 4}
+# Set nsfw dataset prediction map
+NSFW_PREDICT_MAP = {0: 'drawing', 1: 'hentai', 2: 'neural', 3: 'porn', 4: 'sexy'}
