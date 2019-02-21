@@ -317,9 +317,9 @@ class NsfwDataFeeder(object):
 
             # The map transformation takes a function and applies it to every element
             # of the dataset.
-            dataset = dataset.map(tf_io_pipline_tools.decode)
-            dataset = dataset.map(tf_io_pipline_tools.augment)
-            dataset = dataset.map(tf_io_pipline_tools.normalize)
+            dataset = dataset.map(tf_io_pipline_tools.decode, num_parallel_calls=6)
+            dataset = dataset.map(tf_io_pipline_tools.augment, num_parallel_calls=6)
+            dataset = dataset.map(tf_io_pipline_tools.normalize, num_parallel_calls=6)
 
             # The shuffle transformation uses a finite-sized buffer to shuffle elements
             # in memory. The parameter is the number of elements in the buffer. For
