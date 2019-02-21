@@ -49,9 +49,9 @@ __C.TRAIN.MOVING_AVERAGE_DECAY = 0.9999
 # Set the class numbers
 __C.TRAIN.CLASSES_NUMS = 5
 # Set the image height
-__C.TRAIN.IMG_HEIGHT = 224
+__C.TRAIN.IMG_HEIGHT = 256
 # Set the image width
-__C.TRAIN.IMG_WIDTH = 224
+__C.TRAIN.IMG_WIDTH = 256
 # Set the GPU nums
 __C.TRAIN.GPU_NUM = 2
 
@@ -63,7 +63,7 @@ __C.TEST.GPU_MEMORY_FRACTION = 0.8
 # Set the GPU allow growth parameter during tensorflow testing process
 __C.TEST.TF_ALLOW_GROWTH = True
 # Set the test batch size
-__C.TEST.BATCH_SIZE = 48
+__C.TEST.BATCH_SIZE = 64
 
 __C.NET = easydict.EasyDict()
 # Set net residual_blocks_nums
