@@ -114,3 +114,5 @@ venv.bak/
 data/
 model/
 tboard/
+
+tmp*.py
