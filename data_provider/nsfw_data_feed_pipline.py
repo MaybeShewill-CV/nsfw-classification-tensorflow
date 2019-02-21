@@ -106,7 +106,7 @@ class NsfwDataProducer(object):
         os.makedirs(save_dir, exist_ok=True)
 
         # set process pool
-        process_pool = multiprocessing.Pool(processes=4)
+        process_pool = multiprocessing.Pool(processes=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
         # generate training example tfrecords
         log.info('Generating training example tfrecords')
@@ -128,7 +128,7 @@ class NsfwDataProducer(object):
         log.info('Generate training example tfrecords complete')
 
         # set process pool
-        process_pool = multiprocessing.Pool(processes=4)
+        process_pool = multiprocessing.Pool(processes=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
         # generate val example tfrecords
         log.info('Generating validation example tfrecords')
@@ -150,7 +150,7 @@ class NsfwDataProducer(object):
         log.info('Generate validation example tfrecords complete')
 
         # set process pool
-        process_pool = multiprocessing.Pool(processes=4)
+        process_pool = multiprocessing.Pool(processes=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
         # generate test example tfrecords
         log.info('Generating testing example tfrecords')
@@ -317,9 +317,12 @@ class NsfwDataFeeder(object):
 
             # The map transformation takes a function and applies it to every element
             # of the dataset.
-            dataset = dataset.map(tf_io_pipline_tools.decode, num_parallel_calls=6)
-            dataset = dataset.map(tf_io_pipline_tools.augment, num_parallel_calls=6)
-            dataset = dataset.map(tf_io_pipline_tools.normalize, num_parallel_calls=6)
+            dataset = dataset.map(map_func=tf_io_pipline_tools.decode,
+                                  num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
+            dataset = dataset.map(map_func=tf_io_pipline_tools.augment,
+                                  num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
+            dataset = dataset.map(map_func=tf_io_pipline_tools.normalize,
+                                  num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
             # The shuffle transformation uses a finite-sized buffer to shuffle elements
             # in memory. The parameter is the number of elements in the buffer. For
@@ -343,26 +346,26 @@ if __name__ == '__main__':
     """
 
     # test nsfw data producer
-    # producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
-    #
-    # producer.print_label_map()
-    # producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
+    producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
+
+    producer.print_label_map()
+    producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
 
     # test nsfw data feeder
-    feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
-
-    index = 0
-
-    with tf.Session() as sess:
-        try:
-            while True:
-                images, labels = feeder.inputs(32, 1)
-
-                a, b = sess.run([images, labels])
-
-                index += 1
-
-                print(a.shape)
-        except tf.errors.OutOfRangeError as err:
-            print(err)
-            print(index)
+    # feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
+    #
+    # index = 0
+    #
+    # with tf.Session() as sess:
+    #     try:
+    #         while True:
+    #             images, labels = feeder.inputs(32, 1)
+    #
+    #             a, b = sess.run([images, labels])
+    #
+    #             index += 1
+    #
+    #             print(a.shape)
+    #     except tf.errors.OutOfRangeError as err:
+    #         print(err)
+    #         print(index)

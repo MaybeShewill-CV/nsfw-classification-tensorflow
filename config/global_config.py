@@ -54,6 +54,8 @@ __C.TRAIN.IMG_HEIGHT = 256
 __C.TRAIN.IMG_WIDTH = 256
 # Set the GPU nums
 __C.TRAIN.GPU_NUM = 2
+# Set cpu multi process thread nums
+__C.TRAIN.CPU_MULTI_PROCESS_NUMS = 6
 
 # Test options
 __C.TEST = easydict.EasyDict()
