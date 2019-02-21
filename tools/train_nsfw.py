@@ -208,13 +208,20 @@ def train_net(dataset_dir, weights_path=None):
 
     # set optimizer
     with tf.device('/gpu:1'):
+        # set learning rate
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.train.exponential_decay(
-            learning_rate=CFG.TRAIN.LEARNING_RATE,
-            global_step=global_step,
-            decay_steps=CFG.TRAIN.LR_DECAY_STEPS,
-            decay_rate=CFG.TRAIN.LR_DECAY_RATE,
-            staircase=True
+        decay_steps = [CFG.TRAIN.LR_DECAY_STEPS_1, CFG.TRAIN.LR_DECAY_STEPS_2]
+        decay_values = []
+        init_lr = CFG.TRAIN.LEARNING_RATE
+        for step in range(len(decay_steps) + 1):
+            decay_values.append(init_lr)
+            init_lr = init_lr * CFG.TRAIN.LR_DECAY_RATE
+
+        learning_rate = tf.train.piecewise_constant(
+            x=global_step,
+            boundaries=decay_steps,
+            values=decay_values,
+            name='learning_rate'
         )
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -351,12 +358,18 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
 
     # set learning rate
     global_step = tf.Variable(0, trainable=False)
-    learning_rate = tf.train.exponential_decay(
-        learning_rate=CFG.TRAIN.LEARNING_RATE,
-        global_step=global_step,
-        decay_steps=CFG.TRAIN.LR_DECAY_STEPS,
-        decay_rate=CFG.TRAIN.LR_DECAY_RATE,
-        staircase=True
+    decay_steps = [CFG.TRAIN.LR_DECAY_STEPS_1, CFG.TRAIN.LR_DECAY_STEPS_2]
+    decay_values = []
+    init_lr = CFG.TRAIN.LEARNING_RATE
+    for step in range(len(decay_steps) + 1):
+        decay_values.append(init_lr)
+        init_lr = init_lr * CFG.TRAIN.LR_DECAY_RATE
+
+    learning_rate = tf.train.piecewise_constant(
+        x=global_step,
+        boundaries=decay_steps,
+        values=decay_values,
+        name='learning_rate'
     )
 
     # set optimizer
@@ -545,3 +558,4 @@ if __name__ == '__main__':
         train_net(args.dataset_dir, args.weights_path)
     else:
         train_net_multi_gpu(args.dataset_dir, args.weights_path)
+
