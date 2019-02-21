@@ -539,11 +539,9 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
 
             if epoch % 2000 == 0:
                 saver.save(sess=sess, save_path=model_save_path, global_step=epoch)
-
-            if epoch % 60000 == 0 and epoch != 0:
-                learning_rate *= 0.1
-
     sess.close()
+
+    return
 
 
 if __name__ == '__main__':
