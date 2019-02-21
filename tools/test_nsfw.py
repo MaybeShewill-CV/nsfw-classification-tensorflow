@@ -173,9 +173,8 @@ def nsfw_classify_image(image_path, weights_path):
         image_tensor = tf.placeholder(dtype=tf.float32,
                                       shape=[1, CFG.TRAIN.IMG_HEIGHT, CFG.TRAIN.IMG_WIDTH, 3],
                                       name='input_tensor')
-        phase = tf.constant('test', dtype=tf.string)
-
         # set nsfw net
+        phase = tf.constant('test', dtype=tf.string)
         nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
 
         # compute inference logits
