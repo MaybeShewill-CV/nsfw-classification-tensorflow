@@ -63,11 +63,12 @@ def calculate_top_k_error(predictions, labels, k=1):
     return (batch_size - num_correct) / float(batch_size)
 
 
-def nsfw_eval_dataset(dataset_dir, weights_path):
+def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
     """
     Evaluate the nsfw dataset
     :param dataset_dir: The nsfw dataset dir which contains tensorflow records file
     :param weights_path: The pretrained nsfw model weights file path
+    :param top_k: calculate the top k accuracy
     :return:
     """
     # set nsfw data feed pipline
@@ -94,10 +95,15 @@ def nsfw_eval_dataset(dataset_dir, weights_path):
                                     reuse=False)
 
         predictions = tf.nn.softmax(logits)
-        top1_error = calculate_top_k_error(predictions, labels, 1)
+        top_k_error = calculate_top_k_error(predictions, labels, top_k)
+
+    # Restore the moving average version of the learned variables for eval.
+    variable_averages = tf.train.ExponentialMovingAverage(
+        CFG.TRAIN.MOVING_AVERAGE_DECAY)
+    variables_to_restore = variable_averages.variables_to_restore()
 
     # set tensorflow saver
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(variables_to_restore)
 
     # Set sess configuration
     sess_config = tf.ConfigProto(allow_soft_placement=True)
@@ -107,7 +113,7 @@ def nsfw_eval_dataset(dataset_dir, weights_path):
 
     sess = tf.Session(config=sess_config)
 
-    avg_prediction_top_1_accuracy = []
+    avg_prediction_top_k_accuracy = []
 
     with sess.as_default():
 
@@ -119,7 +125,7 @@ def nsfw_eval_dataset(dataset_dir, weights_path):
                     fetches=[images_scale,
                              predictions,
                              labels,
-                             top1_error])
+                             top_k_error])
 
                 log.info('\n**************')
                 log.info('Test dataset batch size: {:d}'.format(images_vals.shape[0]))
@@ -144,10 +150,10 @@ def nsfw_eval_dataset(dataset_dir, weights_path):
                     # plt.ioff()
 
                 log.info('Top 1 accuracy of this batch is: {:.5f}'.format(1 - top1_error_val))
-                avg_prediction_top_1_accuracy.append(1 - top1_error_val)
+                avg_prediction_top_k_accuracy.append(1 - top1_error_val)
 
             except tf.errors.OutOfRangeError as err:
-                log.info('Total avg top 1 error is: {:.5f}'.format(np.mean(avg_prediction_top_1_accuracy)))
+                log.info('Total avg top 1 error is: {:.5f}'.format(np.mean(avg_prediction_top_k_accuracy)))
                 break
     return
 
@@ -180,8 +186,13 @@ def nsfw_classify_image(image_path, weights_path):
 
         predictions = tf.nn.softmax(logits)
 
+    # Restore the moving average version of the learned variables for eval.
+    variable_averages = tf.train.ExponentialMovingAverage(
+        CFG.TRAIN.MOVING_AVERAGE_DECAY)
+    variables_to_restore = variable_averages.variables_to_restore()
+
     # set tensorflow saver
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(variables_to_restore)
 
     # Set sess configuration
     sess_config = tf.ConfigProto(allow_soft_placement=True)
