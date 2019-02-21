@@ -346,26 +346,26 @@ if __name__ == '__main__':
     """
 
     # test nsfw data producer
-    producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
-
-    producer.print_label_map()
-    producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
+    # producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
+    #
+    # producer.print_label_map()
+    # producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
 
     # test nsfw data feeder
-    # feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
-    #
-    # index = 0
-    #
-    # with tf.Session() as sess:
-    #     try:
-    #         while True:
-    #             images, labels = feeder.inputs(32, 1)
-    #
-    #             a, b = sess.run([images, labels])
-    #
-    #             index += 1
-    #
-    #             print(a.shape)
-    #     except tf.errors.OutOfRangeError as err:
-    #         print(err)
-    #         print(index)
+    feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
+
+    index = 0
+
+    with tf.Session() as sess:
+        try:
+            while True:
+                images, labels = feeder.inputs(32, 1)
+
+                a, b = sess.run([images, labels])
+
+                index += 1
+
+                print(a.shape)
+        except tf.errors.OutOfRangeError as err:
+            print(err)
+            print(index)
