@@ -78,7 +78,7 @@ def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
 
     with tf.device('/gpu:1'):
         # set nsfw classification model
-        phase = tf.constant('train', dtype=tf.string)
+        phase = tf.constant('test', dtype=tf.string)
 
         # set nsfw net
         nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
@@ -207,10 +207,12 @@ def nsfw_classify_image(image_path, weights_path):
         saver.restore(sess=sess, save_path=weights_path)
 
         image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        image_vis = image
         image = cv2.resize(src=image,
                            dsize=(CFG.TRAIN.IMG_WIDTH, CFG.TRAIN.IMG_HEIGHT),
                            interpolation=cv2.INTER_CUBIC)
         image = np.array(image, dtype=np.float32) / 255.0 - 0.5
+        image *= 2
 
         predictions_vals = sess.run(
             fetches=predictions,
@@ -224,7 +226,7 @@ def nsfw_classify_image(image_path, weights_path):
         log.info('Predict result is: {}'.format(prediction_score))
 
         plt.figure('source image')
-        plt.imshow(image[:, :, (2, 1, 0)])
+        plt.imshow(image_vis[:, :, (2, 1, 0)])
         plt.show()
 
     return
