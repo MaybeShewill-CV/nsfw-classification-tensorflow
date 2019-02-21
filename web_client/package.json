@@ -1,0 +1,17 @@
+{
+  "name": "tensorflowjs_nsfw",
+  "version": "1.0.0",
+  "description": "tensorflow web demo for nsfw classification",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "nsfw"
+  ],
+  "author": "MaybeShewill-CV",
+  "license": "MIT",
+   "dependencies": {
+    "@tensorflow/tfjs": "^0.15.1"
+   }
+}
