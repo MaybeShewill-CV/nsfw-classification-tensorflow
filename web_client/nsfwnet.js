@@ -12,8 +12,8 @@ import * as tf from '@tensorflow/tfjs';
 
 import {NSFW_CLASSES} from './nsfw_classes';
 
-const MODEL_FILE_URL = 'downloads://https://share.weiyun.com/55mMWcT';
-const WEIGHT_MANIFEST_FILE_URL = 'downloads://https://share.weiyun.com/53YI7FM';
+const MODEL_FILE_URL = 'model/tensorflowjs_model.pb';
+const WEIGHT_MANIFEST_FILE_URL = 'model/weights_manifest.json';
 const INPUT_NODE_NAME = 'input_tensor';
 const OUTPUT_NODE_NAME = 'nsfw_cls_model/final_prediction';
 const PREPROCESS_DIVISOR = tf.scalar(255.0);
