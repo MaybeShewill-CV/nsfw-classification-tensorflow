@@ -64,7 +64,7 @@ def build_saved_model(ckpt_path, export_dir):
                                     name='nsfw_cls_model',
                                     reuse=False)
 
-        predictions = tf.nn.softmax(logits, name='final_prediction')
+        predictions = tf.nn.softmax(logits, name='nsfw_cls_model/final_prediction')
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
