@@ -103,7 +103,7 @@ def build_saved_model(ckpt_path, export_dir):
         # add graph into MetaGraphDef protobuf
         saved_builder.add_meta_graph_and_variables(
             sess,
-            tags=[sm.tag_constants.TRAINING],
+            tags=[sm.tag_constants.SERVING],
             signature_def_map={sm.signature_constants.CLASSIFY_INPUTS: signatur_def}
         )
 
@@ -140,7 +140,10 @@ def test_load_saved_model(saved_model_dir):
 
     with sess.as_default():
 
-        meta_graphdef = sm.loader.load(sess, tags=[sm.tag_constants.TRAINING], export_dir=saved_model_dir)
+        meta_graphdef = sm.loader.load(
+            sess,
+            tags=[sm.tag_constants.SERVING],
+            export_dir=saved_model_dir)
 
         signature_def_d = meta_graphdef.signature_def
         signature_def_d = signature_def_d[sm.signature_constants.CLASSIFY_INPUTS]
