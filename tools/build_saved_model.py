@@ -49,22 +49,21 @@ def build_saved_model(ckpt_path, export_dir):
 
     assert ops.exists(ops.split(ckpt_path)[0])
 
-    with tf.device('/gpu:0'):
-        # build inference tensorflow graph
-        image_tensor = tf.placeholder(dtype=tf.float32,
-                                      shape=[1, CFG.TRAIN.IMG_HEIGHT, CFG.TRAIN.IMG_WIDTH, 3],
-                                      name='input_tensor')
-        # set nsfw net
-        phase = tf.constant('test', dtype=tf.string)
-        nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
+    # build inference tensorflow graph
+    image_tensor = tf.placeholder(dtype=tf.float32,
+                                  shape=[1, CFG.TRAIN.IMG_HEIGHT, CFG.TRAIN.IMG_WIDTH, 3],
+                                  name='input_tensor')
+    # set nsfw net
+    phase = tf.constant('test', dtype=tf.string)
+    nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
 
-        # compute inference logits
-        logits = nsfw_net.inference(input_tensor=image_tensor,
-                                    residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
-                                    name='nsfw_cls_model',
-                                    reuse=False)
+    # compute inference logits
+    logits = nsfw_net.inference(input_tensor=image_tensor,
+                                residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
+                                name='nsfw_cls_model',
+                                reuse=False)
 
-        predictions = tf.nn.softmax(logits, name='nsfw_cls_model/final_prediction')
+    predictions = tf.nn.softmax(logits, name='nsfw_cls_model/final_prediction')
 
     # Restore the moving average version of the learned variables for eval.
     variable_averages = tf.train.ExponentialMovingAverage(
