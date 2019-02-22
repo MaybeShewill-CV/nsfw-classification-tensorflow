@@ -12,12 +12,10 @@ import * as tf from '@tensorflow/tfjs';
 
 import {NSFW_CLASSES} from './nsfw_classes';
 
-const GOOGLE_CLOUD_STORAGE_DIR =
-    'https://storage.googleapis.com/tfjs-models/savedmodel/';
-const MODEL_FILE_URL = 'mobilenet_v2_1.0_224/tensorflowjs_model.pb';
-const WEIGHT_MANIFEST_FILE_URL = 'mobilenet_v2_1.0_224/weights_manifest.json';
-const INPUT_NODE_NAME = 'images';
-const OUTPUT_NODE_NAME = 'module_apply_default/MobilenetV2/Logits/output';
+const MODEL_FILE_URL = 'downloads://https://share.weiyun.com/55mMWcT';
+const WEIGHT_MANIFEST_FILE_URL = 'downloads://https://share.weiyun.com/53YI7FM';
+const INPUT_NODE_NAME = 'input_tensor';
+const OUTPUT_NODE_NAME = 'nsfw_cls_model/final_prediction';
 const PREPROCESS_DIVISOR = tf.scalar(255.0);
 
 export class NsfwNet {
@@ -25,8 +23,9 @@ export class NsfwNet {
 
   async load() {
     this.model = await tf.loadFrozenModel(
-        GOOGLE_CLOUD_STORAGE_DIR + MODEL_FILE_URL,
-        GOOGLE_CLOUD_STORAGE_DIR + WEIGHT_MANIFEST_FILE_URL);
+        MODEL_FILE_URL,
+        WEIGHT_MANIFEST_FILE_URL);
+    //   this.model = await loadFrozenModel(MODEL_FILE_URL, WEIGHT_MANIFEST_FILE_URL)
   }
 
   dispose() {
