@@ -355,6 +355,7 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
     val_tower_loss = []
     val_tower_top1_error = []
     batchnorm_updates = None
+    train_summary_op_updates = None
 
     # set learning rate
     global_step = tf.Variable(0, trainable=False)
@@ -391,6 +392,7 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
                     # TODO implement batch normalization for distributed device (luoyao@baidu.com)
                     if i == 0:
                         batchnorm_updates = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                        train_summary_op_updates = tf.get_collection(tf.GraphKeys.SUMMARIES)
 
                     tower_grads.append(grads)
                     train_tower_loss.append(train_loss)
@@ -439,7 +441,7 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
 
     train_merge_summary_op = tf.summary.merge([avg_train_loss_scalar,
                                                avg_train_top1_err_scalar,
-                                               learning_rate_scalar])
+                                               learning_rate_scalar] + train_summary_op_updates)
 
     val_merge_summary_op = tf.summary.merge([avg_val_loss_scalar, avg_val_top1_err_scalar])
 
