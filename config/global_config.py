@@ -33,9 +33,9 @@ __C.TRAIN.GPU_MEMORY_FRACTION = 0.95
 # Set the GPU allow growth parameter during tensorflow training process
 __C.TRAIN.TF_ALLOW_GROWTH = True
 # Set the shadownet training batch size
-__C.TRAIN.BATCH_SIZE = 36
+__C.TRAIN.BATCH_SIZE = 24
 # Set the shadownet validation batch size
-__C.TRAIN.VAL_BATCH_SIZE = 36
+__C.TRAIN.VAL_BATCH_SIZE = 24
 # Set the learning rate decay steps
 __C.TRAIN.LR_DECAY_STEPS_1 = 40000
 # Set the learning rate decay steps
@@ -69,7 +69,9 @@ __C.TEST.BATCH_SIZE = 64
 
 __C.NET = easydict.EasyDict()
 # Set net residual_blocks_nums
-__C.NET.RES_BLOCKS_NUMS = 5
+__C.NET.RES_BLOCKS_NUMS = 8
+# Set feats summary flag
+__C.NET.NEED_SUMMARY_FEATS_MAP = False
 
 # Set nsfw dataset label map
 NSFW_LABEL_MAP = {'drawing': 0, 'hentai': 1, 'neural': 2, 'porn': 3, 'sexy': 4}
