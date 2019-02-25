@@ -57,8 +57,8 @@ def calculate_top_k_error(predictions, labels, k=1):
     :return: tensor with shape [1]
     """
     batch_size = CFG.TEST.BATCH_SIZE
-    in_top1 = tf.to_float(tf.nn.in_top_k(predictions, labels, k=k))
-    num_correct = tf.reduce_sum(in_top1)
+    in_top_k = tf.to_float(tf.nn.in_top_k(predictions, labels, k=k))
+    num_correct = tf.reduce_sum(in_top_k)
 
     return (batch_size - num_correct) / float(batch_size)
 
@@ -153,7 +153,7 @@ def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
                 avg_prediction_top_k_accuracy.append(1 - top1_error_val)
 
             except tf.errors.OutOfRangeError as err:
-                log.info('Total avg top 1 error is: {:.5f}'.format(np.mean(avg_prediction_top_k_accuracy)))
+                log.info('Total avg top 1 accuracy is: {:.5f}'.format(np.mean(avg_prediction_top_k_accuracy)))
                 break
     return
 
