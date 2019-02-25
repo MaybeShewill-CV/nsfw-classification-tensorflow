@@ -31,6 +31,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         self._test_phase = tf.constant('test', dtype=tf.string)
         self._phase = phase
         self._is_training = self._init_phase()
+        self._need_summary_feats_map = CFG.NET.NEED_SUMMARY_FEATS_MAP
 
     def _init_phase(self):
         """
@@ -38,6 +39,19 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         :return:
         """
         return tf.equal(self._phase, self._train_phase)
+
+    @staticmethod
+    def _feature_map_summary(input_tensor, slice_nums, axis):
+        """
+        summary feature map
+        :param input_tensor: A Tensor
+        :return: Add histogram summary and scalar summary of the sparsity of the tensor
+        """
+        tensor_name = input_tensor.op.name
+
+        split = tf.split(input_tensor, num_or_size_splits=slice_nums, axis=axis)
+        for i in range(slice_nums):
+            tf.summary.image(tensor_name + "/feature_maps_" + str(i), split[i])
 
     def _bn_relu_conv_layer(self, input_tensor, k_size, out_dims, stride, name):
         """
@@ -166,6 +180,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
                                                   out_dims=16,
                                                   stride=1,
                                                   name='conv_0')
+                # self._feature_map_summary(conv_0, slice_nums=16, axis=3)
                 layers.append(conv_0)
 
             for i in range(residual_blocks_nums):
@@ -175,18 +190,24 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
                     else:
                         conv_1 = self._residual_block(layers[-1], 16, first_block=False)
 
+                    if self._need_summary_feats_map:
+                        self._feature_map_summary(conv_1, slice_nums=16, axis=3)
                     layers.append(conv_1)
 
             for i in range(residual_blocks_nums):
                 with tf.variable_scope('conv_2_{:d}'.format(i), reuse=reuse):
                     conv_2 = self._residual_block(layers[-1], 32)
 
+                    if self._need_summary_feats_map:
+                        self._feature_map_summary(conv_2, slice_nums=32, axis=3)
                     layers.append(conv_2)
 
             for i in range(residual_blocks_nums):
                 with tf.variable_scope('conv_3_{:d}'.format(i), reuse=reuse):
                     conv_3 = self._residual_block(layers[-1], 64)
 
+                    if self._need_summary_feats_map:
+                        self._feature_map_summary(conv_3, slice_nums=64, axis=3)
                     layers.append(conv_3)
 
             with tf.variable_scope('fc', reuse=reuse):
