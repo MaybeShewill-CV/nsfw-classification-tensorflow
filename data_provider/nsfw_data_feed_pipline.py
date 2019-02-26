@@ -354,18 +354,15 @@ if __name__ == '__main__':
     # test nsfw data feeder
     feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
 
-    index = 0
+    images, labels = feeder.inputs(32, 1)
 
     with tf.Session() as sess:
-        try:
-            while True:
-                images, labels = feeder.inputs(32, 1)
-
+        while True:
+            try:
                 a, b = sess.run([images, labels])
 
-                index += 1
-
-                print(a.shape)
-        except tf.errors.OutOfRangeError as err:
-            print(err)
-            print(index)
+            except tf.errors.OutOfRangeError as err:
+                print(err)
+                break
+            except Exception as err:
+                print(err)
