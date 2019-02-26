@@ -21,7 +21,7 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
     """
     nsfw classification net
     """
-    def __init__(self, phase):
+    def __init__(self, phase, resnet_size=CFG.NET.RESNET_SIZE):
         """
 
         :param phase:
@@ -32,6 +32,9 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         self._phase = phase
         self._is_training = self._init_phase()
         self._need_summary_feats_map = CFG.NET.NEED_SUMMARY_FEATS_MAP
+        self._resnet_size = resnet_size
+        self._block_sizes = self._get_block_sizes(self._resnet_size)
+        self._block_strides = [1, 2, 2, 2]
 
     def _init_phase(self):
         """
@@ -39,6 +42,32 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         :return:
         """
         return tf.equal(self._phase, self._train_phase)
+
+    @staticmethod
+    def _get_block_sizes(resnet_size):
+        """
+        Retrieve the size of each block_layer in the ResNet model.
+        The number of block layers used for the Resnet model varies according
+        to the size of the model. This helper grabs the layer set we want, throwing
+        an error if a non-standard size has been selected.
+        Args:
+          resnet_size: The number of convolutional layers needed in the model.
+        Returns:
+          A list of block sizes to use in building the model.
+        Raises:
+          KeyError: if invalid resnet_size is received.
+        """
+        choices = {
+            32: [3, 4, 6, 3],
+            50: [3, 4, 6, 3]
+        }
+
+        try:
+            return choices[resnet_size]
+        except KeyError:
+            err = ('Could not find layers for selected Resnet size.\n'
+                   'Size received: {}; sizes allowed: {}.'.format(resnet_size, choices.keys()))
+            raise ValueError(err)
 
     @staticmethod
     def _feature_map_summary(input_tensor, slice_nums, axis):
@@ -53,189 +82,192 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         for i in range(slice_nums):
             tf.summary.image(tensor_name + "/feature_maps_" + str(i), split[i])
 
-    def _bn_relu_conv_layer(self, input_tensor, k_size, out_dims, stride, name):
+    def _fixed_padding(self, inputs, kernel_size, name):
+        """Pads the input along the spatial dimensions independently of input size.
+        Args:
+          inputs: A tensor of size [batch, channels, height_in, width_in] or
+            [batch, height_in, width_in, channels] depending on data_format.
+          kernel_size: The kernel to be used in the conv2d or max_pool2d operation.
+                       Should be a positive integer.
+          name:
+        Returns:
+          A tensor with the same format as the input with the data either intact
+          (if kernel_size == 1) or padded (if kernel_size > 1).
+        """
+        with tf.variable_scope(name_or_scope=name):
+            pad_total = kernel_size - 1
+            pad_beg = pad_total // 2
+            pad_end = pad_total - pad_beg
+
+            padded_inputs = self.pad(inputdata=inputs,
+                                     paddings=[[0, 0], [pad_beg, pad_end],
+                                              [pad_beg, pad_end], [0, 0]],
+                                     name='pad')
+        return padded_inputs
+
+    def _conv2d_fixed_padding(self, inputs, kernel_size, output_dims, strides, name):
         """
 
-        :param input_tensor:
-        :param k_size:
-        :param out_dims:
-        :param stride:
+        :param inputs:
+        :param kernel_size:
+        :param output_dims:
+        :param strides:
         :param name:
         :return:
         """
         with tf.variable_scope(name_or_scope=name):
+            if strides > 1:
+                inputs = self._fixed_padding(inputs, kernel_size, name='fix_padding')
 
-            bn = self.layerbn(inputdata=input_tensor, is_training=self._is_training, name='bn')
-            # gn = self.layergn(inputdata=input_tensor, group_size=16, name='gn')
+            result = self.conv2d(inputdata=inputs, out_channel=output_dims, kernel_size=kernel_size,
+                                 stride=strides, padding=('SAME' if strides == 1 else 'VALID'),
+                                 use_bias=False, name='conv')
 
-            relu = self.relu(inputdata=bn, name='relu')
+        return result
 
-            conv = self.conv2d(inputdata=relu,
-                               out_channel=out_dims,
-                               kernel_size=k_size,
-                               stride=stride,
-                               use_bias=False,
-                               name='conv')
-        return conv
-
-    def _conv_bn_relu_layer(self, input_tensor, k_size, out_dims, stride, name):
+    def _process_image_input_tensor(self, input_image_tensor, kernel_size,
+                                    conv_stride, output_dims, pool_size, pool_stride):
         """
+        Resnet entry
+        :param input_image_tensor:
+        :param kernel_size:
+        :param conv_stride:
+        :param output_dims:
+        :param pool_size:
+        :param pool_stride:
+        :return:
+        """
+        inputs = self._conv2d_fixed_padding(
+            inputs=input_image_tensor, kernel_size=kernel_size,
+            strides=conv_stride, output_dims=output_dims, name='initial_conv_pad')
+        inputs = tf.identity(inputs, 'initial_conv')
 
+        inputs = self.maxpooling(inputdata=inputs, kernel_size=pool_size,
+                                 stride=pool_stride, padding='SAME',
+                                 name='initial_max_pool')
+
+        return inputs
+
+    def _resnet_block_fn(self, input_tensor, kernel_size, stride,
+                         output_dims, name, projection_shortcut=None):
+        """
+        A single block for ResNet v2, without a bottleneck.
+        Batch normalization then ReLu then convolution as described by:
+        Identity Mappings in Deep Residual Networks
+        https://arxiv.org/pdf/1603.05027.pdf
+        by Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun, Jul 2016.
         :param input_tensor:
-        :param k_size:
-        :param out_dims:
+        :param kernel_size:
         :param stride:
+        :param output_dims:
         :param name:
+        :param projection_shortcut:
         :return:
         """
         with tf.variable_scope(name_or_scope=name):
-            conv = self.conv2d(inputdata=input_tensor,
-                               out_channel=out_dims,
-                               kernel_size=k_size,
-                               stride=stride,
-                               use_bias=False,
-                               name='conv')
-            bn = self.layerbn(inputdata=conv, is_training=self._is_training, name='bn')
-            # gn = self.layergn(inputdata=conv, group_size=16, name='gn')
+            shortcut = input_tensor
+            inputs = self.layerbn(inputdata=input_tensor, is_training=self._is_training, name='bn_1')
+            inputs = self.relu(inputdata=inputs, name='relu_1')
 
-            relu = self.relu(inputdata=bn, name='relu')
+            if projection_shortcut is not None:
+                shortcut = projection_shortcut(inputs)
 
-        return relu
+            inputs = self._conv2d_fixed_padding(
+                inputs=inputs, output_dims=output_dims,
+                kernel_size=kernel_size, strides=stride, name='conv_pad_1')
 
-    def _residual_block(self, input_tensor, output_channel, first_block=False):
+            inputs = self.layerbn(inputdata=inputs, is_training=self._is_training, name='bn_2')
+            inputs = self.relu(inputdata=inputs, name='relu_2')
+            inputs = self._conv2d_fixed_padding(
+                inputs=inputs, output_dims=output_dims, kernel_size=kernel_size, strides=1, name='conv_pad_2')
+
+        return inputs + shortcut
+
+    def _resnet_block_layer(self, input_tensor, kernel_size, stride, block_nums, output_dims, name):
         """
-        Defines a residual block in ResNet
-        :param input_tensor: 4D tensor
-        :param output_channel: int. return_tensor.get_shape().as_list()[-1] = output_channel
-        :param first_block: if this is the first residual block of the whole network
-        :return: 4D tensor.
+
+        :param input_tensor:
+        :param kernel_size:
+        :param stride:
+        :param block_nums:
+        :param name:
+        :return:
         """
-        input_channel = input_tensor.get_shape().as_list()[-1]
+        def projection_shortcut(_inputs):
+            return self._conv2d_fixed_padding(
+                inputs=_inputs, output_dims=output_dims, kernel_size=1,
+                strides=stride, name='projection_shortcut')
 
-        if input_channel * 2 == output_channel:
-            increase_dim = True
-            stride = 2
-        elif input_channel == output_channel:
-            increase_dim = False
-            stride = 1
-        else:
-            raise ValueError('Output and input channel does not match in residual blocks!!!')
+        with tf.variable_scope(name):
+            inputs = self._resnet_block_fn(input_tensor=input_tensor,
+                                           kernel_size=kernel_size,
+                                           output_dims=output_dims,
+                                           projection_shortcut=projection_shortcut,
+                                           stride=stride,
+                                           name='init_block_fn')
 
-        # The first conv layer of the first residual block does not need to be normalized and relu-ed.
-        with tf.variable_scope('conv_1_in_block'):
-            if first_block:
-                conv_1 = self.conv2d(inputdata=input_tensor,
-                                     out_channel=output_channel,
-                                     kernel_size=3,
-                                     stride=1,
-                                     use_bias=False,
-                                     name='conv_1')
-            else:
-                conv_1 = self._bn_relu_conv_layer(input_tensor=input_tensor,
-                                                  k_size=3,
-                                                  out_dims=output_channel,
-                                                  stride=stride,
-                                                  name='conv_1')
+            for index in range(1, block_nums):
+                inputs = self._resnet_block_fn(input_tensor=inputs,
+                                               kernel_size=kernel_size,
+                                               output_dims=output_dims,
+                                               projection_shortcut=None,
+                                               stride=1,
+                                               name='block_fn_{:d}'.format(index))
+        return inputs
 
-        with tf.variable_scope('conv_2_in_block'):
-            conv_2 = self._bn_relu_conv_layer(input_tensor=conv_1,
-                                              k_size=3,
-                                              out_dims=output_channel,
-                                              stride=1,
-                                              name='conv_2')
-
-        # When the channels of input layer and conv2 does not match, we add zero pads to increase the
-        # depth of input layers
-        if increase_dim is True:
-            pooled_input = self.avgpooling(inputdata=input_tensor,
-                                           kernel_size=2,
-                                           stride=2,
-                                           padding='VALID',
-                                           name='avg_pool')
-            padded_input = tf.pad(pooled_input,
-                                  [[0, 0], [0, 0], [0, 0], [input_channel // 2, input_channel // 2]])
-        else:
-            padded_input = input_tensor
-
-        output = conv_2 + padded_input
-
-        return output
-
-    def inference(self, input_tensor, residual_blocks_nums, name, reuse=False):
+    def inference(self, input_tensor, name, reuse=False):
         """
         The main function that defines the ResNet. total layers = 1 + 2n + 2n + 2n + 1 = 6n + 2
         :param input_tensor: 4D tensor
-        :param residual_blocks_nums: num_residual_blocks
         :param name: net name
         :param reuse: To build train graph, reuse=False. To build validation graph and share weights
         with train graph, resue=True
         :return: last layer in the network. Not softmax-ed
         """
-        layers = []
-
         with tf.variable_scope(name_or_scope=name, reuse=reuse):
-            with tf.variable_scope('conv_0', reuse=reuse):
-                conv_0 = self._conv_bn_relu_layer(input_tensor=input_tensor,
-                                                  k_size=3,
-                                                  out_dims=16,
-                                                  stride=1,
-                                                  name='conv_0')
-                # self._feature_map_summary(conv_0, slice_nums=16, axis=3)
-                layers.append(conv_0)
 
-            for i in range(residual_blocks_nums):
-                with tf.variable_scope('conv_1_{:d}'.format(i), reuse=reuse):
-                    if i == 0:
-                        conv_1 = self._residual_block(layers[-1], 16, first_block=True)
-                    else:
-                        conv_1 = self._residual_block(layers[-1], 16, first_block=False)
+            if self._need_summary_feats_map:
+                self._feature_map_summary(input_tensor=input_tensor, slice_nums=1, axis=-1)
 
-                    if self._need_summary_feats_map:
-                        self._feature_map_summary(conv_1, slice_nums=16, axis=3)
-                    layers.append(conv_1)
+            # first layer process
+            inputs = self._process_image_input_tensor(input_image_tensor=input_tensor,
+                                                      kernel_size=7,
+                                                      conv_stride=2,
+                                                      output_dims=64,
+                                                      pool_size=3,
+                                                      pool_stride=2)
+            if self._need_summary_feats_map:
+                self._feature_map_summary(input_tensor=inputs, slice_nums=64, axis=-1)
 
-            for i in range(residual_blocks_nums):
-                with tf.variable_scope('conv_2_{:d}'.format(i), reuse=reuse):
-                    conv_2 = self._residual_block(layers[-1], 32)
+            for index, block_nums in enumerate(self._block_sizes):
+                output_dims = 64 * (2 ** index)
 
-                    if self._need_summary_feats_map:
-                        self._feature_map_summary(conv_2, slice_nums=32, axis=3)
-                    layers.append(conv_2)
+                inputs = self._resnet_block_layer(input_tensor=inputs,
+                                                  kernel_size=3,
+                                                  output_dims=output_dims,
+                                                  block_nums=block_nums,
+                                                  stride=self._block_strides[index],
+                                                  name='resnet_block_layer_{:d}'.format(index + 1))
 
-            for i in range(residual_blocks_nums):
-                with tf.variable_scope('conv_3_{:d}'.format(i), reuse=reuse):
-                    conv_3 = self._residual_block(layers[-1], 64)
+                if self._need_summary_feats_map:
+                    self._feature_map_summary(input_tensor=inputs, slice_nums=output_dims, axis=-1)
 
-                    if self._need_summary_feats_map:
-                        self._feature_map_summary(conv_3, slice_nums=64, axis=3)
-                    layers.append(conv_3)
+            inputs = self.layerbn(inputdata=inputs, is_training=self._is_training, name='bn_after_block_layer')
+            inputs = self.relu(inputdata=inputs, name='relu_after_block_layer')
 
-            with tf.variable_scope('fc', reuse=reuse):
+            inputs = tf.reduce_mean(input_tensor=inputs, axis=[1, 2], keepdims=True, name='final_reduce_mean')
+            inputs = tf.squeeze(input=inputs, axis=[1, 2], name='final_squeeze')
 
-                bn = self.layerbn(inputdata=layers[-1], is_training=self._is_training, name='bn')
-                # gn = self.layergn(inputdata=layers[-1], group_size=32, name='gn')
-
-                relu = self.relu(inputdata=bn, name='relu')
-
-                global_pool = self.globalavgpooling(inputdata=relu, name='global_avg_pool')
-
-                final_logits = self.fullyconnect(inputdata=global_pool,
-                                                 out_dim=CFG.TRAIN.CLASSES_NUMS,
-                                                 w_init=tf.initializers.variance_scaling(distribution='uniform'),
-                                                 b_init=tf.zeros_initializer(),
-                                                 use_bias=True,
-                                                 name='final_logits')
-
-                layers.append(final_logits)
+            final_logits = self.fullyconnect(inputdata=inputs, out_dim=CFG.TRAIN.CLASSES_NUMS,
+                                             use_bias=False, name='final_logits')
 
         return final_logits
 
-    def compute_loss(self, input_tensor, labels, residual_blocks_nums, name, reuse=False):
+    def compute_loss(self, input_tensor, labels, name, reuse=False):
         """
 
         :param input_tensor:
         :param labels:
-        :param residual_blocks_nums:
         :param name:
         :param reuse:
         :return:
@@ -243,7 +275,6 @@ class NSFWNet(cnn_basenet.CNNBaseModel):
         labels = tf.cast(labels, tf.int64)
 
         inference_logits = self.inference(input_tensor=input_tensor,
-                                          residual_blocks_nums=residual_blocks_nums,
                                           name=name,
                                           reuse=reuse)
 
@@ -265,24 +296,21 @@ if __name__ == '__main__':
     """
     test code
     """
-    image_tensor = tf.placeholder(shape=[16, 224, 224, 3], dtype=tf.float32)
+    image_tensor = tf.placeholder(shape=[16, 256, 256, 3], dtype=tf.float32)
     label_tensor = tf.placeholder(shape=[16], dtype=tf.int32)
 
     net = NSFWNet(phase=tf.constant('train', dtype=tf.string))
 
     loss = net.compute_loss(input_tensor=image_tensor,
                             labels=label_tensor,
-                            residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                             name='net',
                             reuse=False)
     loss_val = net.compute_loss(input_tensor=image_tensor,
                                 labels=label_tensor,
-                                residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                 name='net',
                                 reuse=True)
 
     logits = net.inference(input_tensor=image_tensor,
-                           residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                            name='net',
                            reuse=True)
 

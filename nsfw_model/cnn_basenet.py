@@ -613,3 +613,14 @@ class CNNBaseModel(object):
         """
         with tf.variable_scope(name):
             return tf.nn.relu(inputdata) - alpha * tf.nn.relu(-inputdata)
+
+    @staticmethod
+    def pad(inputdata, paddings, name):
+        """
+
+        :param inputdata:
+        :param paddings:
+        :return:
+        """
+        with tf.variable_scope(name_or_scope=name):
+            return tf.pad(tensor=inputdata, paddings=paddings)
