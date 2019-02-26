@@ -20,6 +20,11 @@ from config import global_config
 
 CFG = global_config.cfg
 
+_R_MEAN = 123.68
+_G_MEAN = 116.78
+_B_MEAN = 103.94
+_CHANNEL_MEANS = [_B_MEAN, _G_MEAN, _R_MEAN]
+
 
 def int64_feature(value):
     """
@@ -124,11 +129,15 @@ def augment(image, label):
 
 def normalize(image, label):
     """
-    Normalize the image data from [0, 255] ----> [-1.0, 1.0]
+    Normalize the image data by substracting the imagenet mean value
     :param image:
     :param label:
     :return:
     """
-    image = tf.cast(image, tf.float32) * (1. / 255) - 0.5
-    image *= 2
-    return image, label
+
+    if image.get_shape().ndims != 3:
+        raise ValueError('Input must be of size [height, width, C>0]')
+
+    means = tf.expand_dims(tf.expand_dims(_CHANNEL_MEANS, 0), 0)
+
+    return image - means, label
