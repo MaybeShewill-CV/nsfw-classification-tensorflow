@@ -104,18 +104,14 @@ def compute_net_gradients(images, labels, net, optimizer=None, is_net_first_init
     """
     net_loss = net.compute_loss(input_tensor=images,
                                 labels=labels,
-                                residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                 name='nsfw_cls_model',
                                 reuse=is_net_first_initialized)
     net_logits = net.inference(input_tensor=images,
-                               residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                name='nsfw_cls_model',
                                reuse=True)
 
     net_predictions = tf.nn.softmax(net_logits)
     net_top1_error = calculate_top_k_error(net_predictions, labels, 1)
-
-    # tf.get_variable_scope().reuse_variables()
 
     if optimizer is not None:
         grads = optimizer.compute_gradients(net_loss)
@@ -141,20 +137,20 @@ def train_net(dataset_dir, weights_path=None):
 
     with tf.device('/gpu:1'):
         # set nsfw net
-        nsfw_net = nsfw_classification_net.NSFWNet(phase=tf.constant('train', dtype=tf.string))
-        nsfw_net_val = nsfw_classification_net.NSFWNet(phase=tf.constant('test', dtype=tf.string))
+        nsfw_net = nsfw_classification_net.NSFWNet(phase=tf.constant('train', dtype=tf.string),
+                                                   resnet_size=CFG.NET.RESNET_SIZE)
+        nsfw_net_val = nsfw_classification_net.NSFWNet(phase=tf.constant('test', dtype=tf.string),
+                                                       resnet_size=CFG.NET.RESNET_SIZE)
 
         # compute train loss
         train_images, train_labels = train_dataset.inputs(batch_size=CFG.TRAIN.BATCH_SIZE,
                                                           num_epochs=1)
         train_loss = nsfw_net.compute_loss(input_tensor=train_images,
                                            labels=train_labels,
-                                           residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                            name='nsfw_cls_model',
                                            reuse=False)
 
         train_logits = nsfw_net.inference(input_tensor=train_images,
-                                          residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                           name='nsfw_cls_model',
                                           reuse=True)
 
@@ -167,12 +163,10 @@ def train_net(dataset_dir, weights_path=None):
         # val_images = tf.reshape(val_images, example_tensor_shape)
         val_loss = nsfw_net_val.compute_loss(input_tensor=val_images,
                                              labels=val_labels,
-                                             residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                              name='nsfw_cls_model',
                                              reuse=True)
 
         val_logits = nsfw_net_val.inference(input_tensor=val_images,
-                                            residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                             name='nsfw_cls_model',
                                             reuse=True)
 
@@ -339,8 +333,10 @@ def train_net_multi_gpu(dataset_dir, weights_path=None):
                                                         flags='val')
 
     # set nsfw net
-    nsfw_net = nsfw_classification_net.NSFWNet(phase=tf.constant('train', dtype=tf.string))
-    nsfw_net_val = nsfw_classification_net.NSFWNet(phase=tf.constant('test', dtype=tf.string))
+    nsfw_net = nsfw_classification_net.NSFWNet(phase=tf.constant('train', dtype=tf.string),
+                                               resnet_size=CFG.NET.RESNET_SIZE)
+    nsfw_net_val = nsfw_classification_net.NSFWNet(phase=tf.constant('test', dtype=tf.string),
+                                                   resnet_size=CFG.NET.RESNET_SIZE)
 
     # fetch train and validation data
     train_images, train_labels = train_dataset.inputs(
