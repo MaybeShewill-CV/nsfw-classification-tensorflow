@@ -138,6 +138,7 @@ def normalize(image, label):
     if image.get_shape().ndims != 3:
         raise ValueError('Input must be of size [height, width, C>0]')
 
+    image_fp = tf.cast(image, dtype=tf.float32)
     means = tf.expand_dims(tf.expand_dims(_CHANNEL_MEANS, 0), 0)
 
-    return image - means, label
+    return image_fp - means, label
