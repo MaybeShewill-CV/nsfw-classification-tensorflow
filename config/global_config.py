@@ -19,7 +19,7 @@ cfg = __C
 __C.TRAIN = easydict.EasyDict()
 
 # Set the shadownet training epochs
-__C.TRAIN.EPOCHS = 80010
+__C.TRAIN.EPOCHS = 100010
 # Set the display step
 __C.TRAIN.DISPLAY_STEP = 1
 # Set the test display step during training process
@@ -29,21 +29,21 @@ __C.TRAIN.MOMENTUM = 0.9
 # Set the initial learning rate
 __C.TRAIN.LEARNING_RATE = 0.1
 # Set the GPU resource used during training process
-__C.TRAIN.GPU_MEMORY_FRACTION = 0.9
+__C.TRAIN.GPU_MEMORY_FRACTION = 0.75
 # Set the GPU allow growth parameter during tensorflow training process
 __C.TRAIN.TF_ALLOW_GROWTH = False
 # Set the shadownet training batch size
-__C.TRAIN.BATCH_SIZE = 64
+__C.TRAIN.BATCH_SIZE = 32
 # Set the shadownet validation batch size
-__C.TRAIN.VAL_BATCH_SIZE = 64
+__C.TRAIN.VAL_BATCH_SIZE = 32
 # Set the learning rate decay steps
 __C.TRAIN.LR_DECAY_STEPS_1 = 40000
 # Set the learning rate decay steps
-__C.TRAIN.LR_DECAY_STEPS_2 = 60000
+__C.TRAIN.LR_DECAY_STEPS_2 = 80000
 # Set the learning rate decay rate
 __C.TRAIN.LR_DECAY_RATE = 0.1
 # Set the weights decay
-__C.TRAIN.WEIGHT_DECAY = 0.0002
+__C.TRAIN.WEIGHT_DECAY = 0.0001
 # Set the train moving average decay
 __C.TRAIN.MOVING_AVERAGE_DECAY = 0.9999
 # Set the class numbers
