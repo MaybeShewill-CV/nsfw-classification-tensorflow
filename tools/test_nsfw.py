@@ -82,7 +82,7 @@ def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
 
         # set nsfw net
         nsfw_net = nsfw_classification_net.NSFWNet(phase=phase,
-                                                   residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS)
+                                                   resnet_size=CFG.NET.RESNET_SIZE)
 
         # compute train loss
         images, labels = test_dataset.inputs(batch_size=CFG.TEST.BATCH_SIZE,
@@ -176,7 +176,7 @@ def nsfw_classify_image(image_path, weights_path):
         # set nsfw net
         phase = tf.constant('test', dtype=tf.string)
         nsfw_net = nsfw_classification_net.NSFWNet(phase=phase,
-                                                   residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS)
+                                                   resnet_size=CFG.NET.RESNET_SIZE)
 
         # compute inference logits
         logits = nsfw_net.inference(input_tensor=image_tensor,
