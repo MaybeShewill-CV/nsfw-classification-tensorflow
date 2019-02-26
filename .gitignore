@@ -112,4 +112,7 @@ venv.bak/
 .idea/nsfw_classification.iml
 .idea/workspace.xml
 
+model/
+tboard/
+
 tmp*.py
