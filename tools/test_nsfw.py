@@ -8,6 +8,7 @@
 """
 Test nsfw model script
 """
+import os.path as ops
 import argparse
 import glog as log
 
@@ -22,6 +23,11 @@ from data_provider import nsfw_data_feed_pipline
 
 
 CFG = global_config.cfg
+
+_R_MEAN = 123.68
+_G_MEAN = 116.78
+_B_MEAN = 103.94
+_CHANNEL_MEANS = [_B_MEAN, _G_MEAN, _R_MEAN]
 
 
 def init_args():
@@ -43,9 +49,9 @@ def scale_image(image):
     :param image:
     :return:
     """
-    scale_float = tf.multiply(tf.add(image, tf.constant(0.5, dtype=tf.float32)),
-                              tf.constant(255.0, dtype=tf.float32))
-    return scale_float
+    means = tf.expand_dims(tf.expand_dims(_CHANNEL_MEANS, 0), 0)
+
+    return image + means
 
 
 def calculate_top_k_error(predictions, labels, k=1):
@@ -71,6 +77,8 @@ def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
     :param top_k: calculate the top k accuracy
     :return:
     """
+    assert ops.exists(dataset_dir)
+
     # set nsfw data feed pipline
     test_dataset = nsfw_data_feed_pipline.NsfwDataFeeder(dataset_dir=dataset_dir,
                                                          flags='test')
@@ -107,8 +115,8 @@ def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
 
     # Set sess configuration
     sess_config = tf.ConfigProto(allow_soft_placement=True)
-    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TRAIN.GPU_MEMORY_FRACTION
-    sess_config.gpu_options.allow_growth = CFG.TRAIN.TF_ALLOW_GROWTH
+    sess_config.gpu_options.per_process_gpu_memory_fraction = CFG.TEST.GPU_MEMORY_FRACTION
+    sess_config.gpu_options.allow_growth = CFG.TEST.TF_ALLOW_GROWTH
     sess_config.gpu_options.allocator_type = 'BFC'
 
     sess = tf.Session(config=sess_config)
@@ -165,6 +173,8 @@ def nsfw_classify_image(image_path, weights_path):
     :param weights_path: The pretrained weights file path
     :return:
     """
+    assert ops.exists(image_path)
+
     prediciton_map = global_config.NSFW_PREDICT_MAP
 
     with tf.device('/gpu:1'):
@@ -210,8 +220,7 @@ def nsfw_classify_image(image_path, weights_path):
         image = cv2.resize(src=image,
                            dsize=(CFG.TRAIN.IMG_WIDTH, CFG.TRAIN.IMG_HEIGHT),
                            interpolation=cv2.INTER_CUBIC)
-        image = np.array(image, dtype=np.float32) / 255.0 - 0.5
-        image *= 2
+        image = np.array(image, dtype=np.float32) - np.array(_CHANNEL_MEANS, np.float32)
 
         predictions_vals = sess.run(
             fetches=predictions,
