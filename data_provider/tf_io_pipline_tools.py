@@ -115,14 +115,37 @@ def decode(serialized_example):
     return image, label
 
 
-def augment(image, label):
+def augment_for_train(image, label):
     """
 
     :param image:
     :param label:
     :return:
     """
-    # TODO luoyao(luoyao@baidu.com) Here can apply some augmentation functions
+    # first apply random crop
+    image = tf.image.random_crop(value=image,
+                                 size=[CFG.TRAIN.CROP_IMG_HEIGHT, CFG.TRAIN.CROP_IMG_WIDTH, 3],
+                                 seed=tf.set_random_seed(1234),
+                                 name='crop_image')
+    # apply random flip
+    image = tf.image.random_flip_left_right(image=image, seed=tf.set_random_seed(1234))
+
+    return image, label
+
+
+def augment_for_validation(image, label):
+    """
+
+    :param image:
+    :param label:
+    :return:
+    """
+    assert CFG.TRAIN.IMG_HEIGHT == CFG.TRAIN.IMG_WIDTH
+    assert CFG.TRAIN.CROP_IMG_HEIGHT == CFG.TRAIN.CROP_IMG_WIDTH
+
+    # apply central crop
+    central_fraction = CFG.TRAIN.CROP_IMG_HEIGHT / CFG.TRAIN.IMG_HEIGHT
+    image = tf.image.central_crop(image=image, central_fraction=central_fraction)
 
     return image, label
 

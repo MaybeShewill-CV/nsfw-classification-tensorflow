@@ -319,8 +319,12 @@ class NsfwDataFeeder(object):
             # of the dataset.
             dataset = dataset.map(map_func=tf_io_pipline_tools.decode,
                                   num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
-            dataset = dataset.map(map_func=tf_io_pipline_tools.augment,
-                                  num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
+            if self._dataset_flags == 'train':
+                dataset = dataset.map(map_func=tf_io_pipline_tools.augment_for_train,
+                                      num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
+            else:
+                dataset = dataset.map(map_func=tf_io_pipline_tools.augment_for_validation,
+                                      num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
             dataset = dataset.map(map_func=tf_io_pipline_tools.normalize,
                                   num_parallel_calls=CFG.TRAIN.CPU_MULTI_PROCESS_NUMS)
 
@@ -352,7 +356,7 @@ if __name__ == '__main__':
     # producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
 
     # test nsfw data feeder
-    feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='train')
+    feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='test')
 
     images, labels = feeder.inputs(32, 1)
 
