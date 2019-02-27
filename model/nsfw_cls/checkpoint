@@ -1,6 +1,0 @@
-model_checkpoint_path: "nsfw_cls_2019-02-26-20-55-05.ckpt-100000"
-all_model_checkpoint_paths: "nsfw_cls_2019-02-26-20-55-05.ckpt-92000"
-all_model_checkpoint_paths: "nsfw_cls_2019-02-26-20-55-05.ckpt-94000"
-all_model_checkpoint_paths: "nsfw_cls_2019-02-26-20-55-05.ckpt-96000"
-all_model_checkpoint_paths: "nsfw_cls_2019-02-26-20-55-05.ckpt-98000"
-all_model_checkpoint_paths: "nsfw_cls_2019-02-26-20-55-05.ckpt-100000"
