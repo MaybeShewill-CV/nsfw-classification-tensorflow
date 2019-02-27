@@ -8,6 +8,7 @@
 """
 nsfw数据feed pipline
 """
+import argparse
 import os
 import os.path as ops
 import random
@@ -22,6 +23,18 @@ from config import global_config
 from data_provider import tf_io_pipline_tools
 
 CFG = global_config.cfg
+
+
+def init_args():
+    """
+
+    :return:
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset_dir', type=str, help='The source nsfw data dir path')
+    parser.add_argument('--tfrecords_dir', type=str, help='The dir path to save converted tfrecords')
+
+    return parser.parse_args()
 
 
 class NsfwDataProducer(object):
@@ -345,28 +358,12 @@ class NsfwDataFeeder(object):
 
 
 if __name__ == '__main__':
-    """
-    test code
-    """
 
-    # test nsfw data producer
-    # producer = NsfwDataProducer(dataset_dir='/media/baidu/Data/NSFW')
-    #
-    # producer.print_label_map()
-    # producer.generate_tfrecords(save_dir='/media/baidu/Data/NSFW/tfrecords', step_size=10000)
+    # init args
+    args = init_args()
 
-    # test nsfw data feeder
-    feeder = NsfwDataFeeder(dataset_dir='/media/baidu/Data/NSFW', flags='test')
+    assert ops.exists(args.dataset_dir), '{:s} not exist'.format(args.dataset_dir)
 
-    images, labels = feeder.inputs(32, 1)
-
-    with tf.Session() as sess:
-        while True:
-            try:
-                a, b = sess.run([images, labels])
-
-            except tf.errors.OutOfRangeError as err:
-                print(err)
-                break
-            except Exception as err:
-                print(err)
+    producer = NsfwDataProducer(dataset_dir=args.dataset_dir)
+    producer.print_label_map()
+    producer.generate_tfrecords(save_dir=args.tfrecords_dir, step_size=10000)
