@@ -3,7 +3,7 @@
 # @Time    : 19-2-22 上午11:10
 # @Author  : Luo Yao
 # @Site    : http://icode.baidu.com/repos/baidu/personal-code/Luoyao
-# @File    : build_saved_model.py
+# @File    : export_saved_model.py
 # @IDE: PyCharm
 """
 Build tensorflow saved model for tensorflowjs converter to use
@@ -22,6 +22,11 @@ from config import global_config
 from nsfw_model import nsfw_classification_net
 
 CFG = global_config.cfg
+
+_R_MEAN = 123.68
+_G_MEAN = 116.78
+_B_MEAN = 103.94
+_CHANNEL_MEANS = [_B_MEAN, _G_MEAN, _R_MEAN]
 
 
 def init_args():
@@ -55,11 +60,11 @@ def build_saved_model(ckpt_path, export_dir):
                                   name='input_tensor')
     # set nsfw net
     phase = tf.constant('test', dtype=tf.string)
-    nsfw_net = nsfw_classification_net.NSFWNet(phase=phase)
+    nsfw_net = nsfw_classification_net.NSFWNet(phase=phase,
+                                               resnet_size=CFG.NET.RESNET_SIZE)
 
     # compute inference logits
     logits = nsfw_net.inference(input_tensor=image_tensor,
-                                residual_blocks_nums=CFG.NET.RES_BLOCKS_NUMS,
                                 name='nsfw_cls_model',
                                 reuse=False)
 
@@ -126,7 +131,7 @@ def test_load_saved_model(saved_model_dir):
     image = cv2.resize(src=image,
                        dsize=(CFG.TRAIN.IMG_WIDTH, CFG.TRAIN.IMG_HEIGHT),
                        interpolation=cv2.INTER_CUBIC)
-    image = np.array((image / 255.0 - 0.5) * 2).astype(np.float32)
+    image = np.array(image, dtype=np.float32) - np.array(_CHANNEL_MEANS, np.float32)
     image = np.expand_dims(image, 0)
 
     # Set sess configuration
@@ -174,7 +179,7 @@ if __name__ == '__main__':
     args = init_args()
 
     # build saved model
-    build_saved_model(args.ckpt_path, args.export_dir)
+    # build_saved_model(args.ckpt_path, args.export_dir)
 
     # test build saved model
     test_load_saved_model(args.export_dir)
