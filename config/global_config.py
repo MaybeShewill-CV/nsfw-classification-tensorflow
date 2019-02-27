@@ -52,6 +52,10 @@ __C.TRAIN.CLASSES_NUMS = 5
 __C.TRAIN.IMG_HEIGHT = 256
 # Set the image width
 __C.TRAIN.IMG_WIDTH = 256
+# Set the image height
+__C.TRAIN.CROP_IMG_HEIGHT = 224
+# Set the image width
+__C.TRAIN.CROP_IMG_WIDTH = 224
 # Set the GPU nums
 __C.TRAIN.GPU_NUM = 2
 # Set cpu multi process thread nums
