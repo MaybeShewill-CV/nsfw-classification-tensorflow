@@ -28,7 +28,8 @@ pip3 install -r requirements.txt
 
 ## Test model
 In this repo I uploaded a pretrained dataset introduced as before, you need to 
-download the pretrained weights file in folder REPO_ROOT_DIR/model/.
+download the pretrained [weights_file](https://www.dropbox.com/sh/yfc3hy7enopdxj2/AADek2FlqCW1_j8Ax5x_VQy8a?dl=0) 
+in folder REPO_ROOT_DIR/model/.
 
 You can test a single image on the trained model as follows
 
