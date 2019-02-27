@@ -179,7 +179,7 @@ if __name__ == '__main__':
     args = init_args()
 
     # build saved model
-    # build_saved_model(args.ckpt_path, args.export_dir)
+    build_saved_model(args.ckpt_path, args.export_dir)
 
     # test build saved model
     test_load_saved_model(args.export_dir)
