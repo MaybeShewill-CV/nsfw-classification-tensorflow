@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 17-9-18 下午3:59
 # @Author  : Luo Yao
-# @Site    : https://github.com/MaybeShewill-CV/lanenet-lane-detection
+# @Site    : https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io
 # @File    : cnn_basenet.py
 # @IDE: PyCharm Community Edition
 """

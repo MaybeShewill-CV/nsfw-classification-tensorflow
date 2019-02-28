@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 18-1-31 上午11:21
 # @Author  : Luo Yao
-# @Site    : https://github.com/MaybeShewill-CV/lanenet-lane-detection
+# @Site    : https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io
 # @File    : global_config.py
 # @IDE: PyCharm Community Edition
 """

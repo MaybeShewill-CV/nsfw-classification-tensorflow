@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 19-2-14 下午5:43
 # @Author  : Luo Yao
-# @Site    : http://icode.baidu.com/repos/baidu/personal-code/Luoyao
+# @Site    : https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io
 # @File    : nsfw_data_feed_pipline.py
 # @IDE: PyCharm
 """

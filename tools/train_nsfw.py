@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 19-2-15 下午8:53
 # @Author  : Luo Yao
-# @Site    : http://icode.baidu.com/repos/baidu/personal-code/Luoyao
+# @Site    : https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io
 # @File    : train_nsfw.py
 # @IDE: PyCharm
 """
