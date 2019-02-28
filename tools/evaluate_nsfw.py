@@ -17,6 +17,7 @@ import tensorflow as tf
 import numpy as np
 from sklearn.metrics import (confusion_matrix, precision_score, recall_score,
                              precision_recall_curve, average_precision_score, f1_score)
+from sklearn.metrics import classification_report
 from sklearn.preprocessing import label_binarize
 from sklearn.utils.fixes import signature
 import matplotlib.pyplot as plt
@@ -117,7 +118,6 @@ def plot_precision_recall_curve(labels, predictions_prob, class_nums, average_fu
                                                             predictions_prob[:, i])
         average_precision[i] = average_precision_score(labels[:, i], predictions_prob[:, i])
 
-    # A "micro-average": quantifying score on all classes jointly
     precision[average_function], recall[average_function], _ = precision_recall_curve(
         labels.ravel(), predictions_prob.ravel())
     average_precision[average_function] = average_precision_score(
@@ -162,12 +162,11 @@ def calculate_evaluate_statics(labels, predictions, model_name='Nsfw', avgerage_
                                               average=avgerage_method)))
 
 
-def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
+def nsfw_eval_dataset(dataset_dir, weights_path):
     """
     Evaluate the nsfw dataset
     :param dataset_dir: The nsfw dataset dir which contains tensorflow records file
     :param weights_path: The pretrained nsfw model weights file path
-    :param top_k: calculate the top k accuracy
     :return:
     """
     assert ops.exists(dataset_dir)
@@ -257,6 +256,10 @@ def nsfw_eval_dataset(dataset_dir, weights_path, top_k=1):
             except Exception as err:
                 log.error(err)
                 break
+
+    # print prediction report
+    print('Nsfw classification_report(left: labels):')
+    print(classification_report(labels_total, predictions_total))
 
     # calculate confusion matrix
     cnf_matrix = confusion_matrix(labels_total, predictions_total)
