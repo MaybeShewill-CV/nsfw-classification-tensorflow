@@ -39,15 +39,6 @@ python tools/test_model.py --weights_path model/new_model/nsfw_cls.ckpt-100000
 --image_path data/test_data/test_drawing.jpg
 ```
 
-You can evaluate the model's performance on the nsfw dataset prepared in
-advance as follows
-
-```
-cd REPO_ROOT_DIR
-python tools/test_model.py --weights_path model/new_model/nsfw_cls.ckpt-100000
---dataset_dir PATH/TO/YOUR/NSFW_DATASET
-```
-
 The following part will show you how the dataset is well prepared
 
 ## Train your own model
@@ -94,7 +85,7 @@ on single gpu.
 
 The main model's hyperparameter are as follows:
 
-**iterations nums**: 120010
+**iterations nums**: 160010
 
 **learning rate**: 0.1
 
@@ -112,6 +103,14 @@ The main model's hyperparameter are as follows:
 
 The rest of the hyperparameter can be found [here](https://github.com/MaybeShewill-CV/nsfw-classification-tensorflow/blob/master/config/global_config.py).
 
+If you want to convert the downloaded ckpt model into tensorflow saved model
+you can simply modify the file path in ROOT_DIR/tools/export_nsfw_saved_model.sh
+and run it.
+
+```
+bash tools/export_nsfw_saved_model.sh
+```
+
 You may monitor the training process using tensorboard tools
 
 During my experiment the `train loss` drops as follows:  
@@ -126,18 +125,48 @@ The `validation loss` drops as follows:
 The `validation_top_1_error` rises as follows:  
 ![validation_top_1_error](/data/images/avg_val_top1_error.png)
 
+#### The Model Evaluation 
+
+You can evaluate the model's performance on the nsfw dataset prepared in
+advance as follows
+
+```
+cd REPO_ROOT_DIR
+python tools/evaluate_nsfw.py --weights_path model/new_model/nsfw_cls.ckpt-160000
+--dataset_dir PATH/TO/YOUR/NSFW_DATASET
+```
+
+After you run the script you should see something like this 
+![evaluation_result](/data/images/evaluation_nsfw.png)
+
+The model's main evaluation index are as follows:
+
+**Precision**: 0.92406 with average weighted on each class
+
+**Recall**: 0.92364 with average weighted on each class
+
+**F1 score**: 0.92344 with average weighted on each class
+
+The `Confusion_Matrix` is as follows:  
+![confusion_matrix](/data/images/confusion_matrix.png)
+
+The `Precison_Recall` is as follows:  
+![precision_recall](/data/images/precision_recall.png)
+
+
 #### Online demo
 Since tensorflo-js is well supported the online deep learning is easy to deploy.
 Here I have make a online demo to do local nsfw classification work. You may 
 test here https://maybeshewill-cv.github.io/nsfw_classification The whole js work
 can be found here https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io/tree/master/nsfw_classification
-I have supplied a tool to convert the trained ckpt model file into tensorflow js
-model file. Simply modify the file path and run the following script
+I have supplied a tool to convert the trained tensorflow saved model file into 
+tensorflow js model file. In order to generate saved model you can read the 
+description about it above. After you generate the tensorflow saved model you 
+can simply modify the file path and run the following script
 
 ```
 cd ROOT_DIR
 bash tools/convert_tfjs_model.sh
 ```
-
 The online demo's example are as follows:
 ![online_demo](/data/images/online_demo.png)
