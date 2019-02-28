@@ -41,6 +41,39 @@ def init_args():
     return parser.parse_args()
 
 
+def central_crop(image, central_fraction):
+    """
+
+    :param image:
+    :param central_fraction:
+    :return:
+    """
+
+    image_shape = np.shape(image)
+    image_height = image_shape[0]
+    image_width = image_shape[1]
+
+    if central_fraction >= 1 or central_fraction < 0:
+        raise ValueError('Central fraction should be in [0, 1)')
+
+    top = int((1 - central_fraction) * image_height / 2)
+    bottom = image_height - top
+    left = int((1 - central_fraction) * image_width / 2)
+    right = image_width - left
+
+    if not image_height or not image_width:
+        raise ValueError('Image shape with zero')
+
+    if len(image_shape) == 2:
+        crop_image = image[top:bottom, left:right]
+        return crop_image
+    elif len(image_shape) == 3:
+        crop_image = image[top:bottom, left:right, :]
+        return crop_image
+    else:
+        raise ValueError('Wrong image shape')
+
+
 def build_saved_model(ckpt_path, export_dir):
     """
     Convert source ckpt weights file into tensorflow saved model
@@ -56,7 +89,7 @@ def build_saved_model(ckpt_path, export_dir):
 
     # build inference tensorflow graph
     image_tensor = tf.placeholder(dtype=tf.float32,
-                                  shape=[1, CFG.TRAIN.IMG_HEIGHT, CFG.TRAIN.IMG_WIDTH, 3],
+                                  shape=[1, CFG.TRAIN.CROP_IMG_HEIGHT, CFG.TRAIN.CROP_IMG_WIDTH, 3],
                                   name='input_tensor')
     # set nsfw net
     phase = tf.constant('test', dtype=tf.string)
@@ -126,11 +159,13 @@ def test_load_saved_model(saved_model_dir):
 
     prediciton_map = global_config.NSFW_PREDICT_MAP
 
-    image = cv2.imread('data/test_drawing_257.jpg', cv2.IMREAD_COLOR)
+    image = cv2.imread('data/test_data/drawing_16715.jpg', cv2.IMREAD_COLOR)
     image_vis = image
     image = cv2.resize(src=image,
                        dsize=(CFG.TRAIN.IMG_WIDTH, CFG.TRAIN.IMG_HEIGHT),
                        interpolation=cv2.INTER_CUBIC)
+    image = central_crop(image=image,
+                         central_fraction=CFG.TRAIN.CROP_IMG_HEIGHT / CFG.TRAIN.IMG_HEIGHT)
     image = np.array(image, dtype=np.float32) - np.array(_CHANNEL_MEANS, np.float32)
     image = np.expand_dims(image, 0)
 
