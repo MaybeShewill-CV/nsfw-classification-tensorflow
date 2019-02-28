@@ -19,7 +19,7 @@ cfg = __C
 __C.TRAIN = easydict.EasyDict()
 
 # Set the shadownet training epochs
-__C.TRAIN.EPOCHS = 100010
+__C.TRAIN.EPOCHS = 160010
 # Set the display step
 __C.TRAIN.DISPLAY_STEP = 1
 # Set the test display step during training process
@@ -37,9 +37,9 @@ __C.TRAIN.BATCH_SIZE = 32
 # Set the shadownet validation batch size
 __C.TRAIN.VAL_BATCH_SIZE = 32
 # Set the learning rate decay steps
-__C.TRAIN.LR_DECAY_STEPS_1 = 40000
+__C.TRAIN.LR_DECAY_STEPS_1 = 60000
 # Set the learning rate decay steps
-__C.TRAIN.LR_DECAY_STEPS_2 = 80000
+__C.TRAIN.LR_DECAY_STEPS_2 = 120000
 # Set the learning rate decay rate
 __C.TRAIN.LR_DECAY_RATE = 0.1
 # Set the weights decay
