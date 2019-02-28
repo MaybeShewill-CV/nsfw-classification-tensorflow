@@ -170,3 +170,6 @@ bash tools/convert_tfjs_model.sh
 ```
 The online demo's example are as follows:
 ![online_demo](/data/images/online_demo.png)
+
+## TODO
+- [ ] Add tensorflow serving script
