@@ -155,9 +155,11 @@ The `Precison_Recall` is as follows:
 
 
 #### Online demo
+
+#####URL: https://maybeshewill-cv.github.io/nsfw_classification
+
 Since tensorflo-js is well supported the online deep learning is easy to deploy.
-Here I have make a online demo to do local nsfw classification work. You may 
-test here https://maybeshewill-cv.github.io/nsfw_classification The whole js work
+Here I have make a online demo to do local nsfw classification work. The whole js work
 can be found here https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io/tree/master/nsfw_classification
 I have supplied a tool to convert the trained tensorflow saved model file into 
 tensorflow js model file. In order to generate saved model you can read the 
