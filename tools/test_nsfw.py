@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # @Time    : 19-2-20 上午10:48
-# @Author  : Luo Yao
-# @Site    : https://github.com/MaybeShewill-CV/MaybeShewill-CV.github.io
+# @Author  : MaybeShewill-CV
+# @Site    : https://github.com/MaybeShewill-CV/CRNN_Tensorflow
 # @File    : test_nsfw.py.py
 # @IDE: PyCharm
 """
