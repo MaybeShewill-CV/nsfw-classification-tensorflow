@@ -116,13 +116,13 @@ You may monitor the training process using tensorboard tools
 During my experiment the `train loss` drops as follows:  
 ![train_loss](/data/images/avg_train_loss.png)
 
-The `train_top_1_error` rises as follows:  
+The `train_top_1_error` drops as follows:  
 ![train_top_1_error](/data/images/avg_train_top1_error.png)
 
 The `validation loss` drops as follows:  
 ![validation_loss](/data/images/avg_val_loss.png)
 
-The `validation_top_1_error` rises as follows:  
+The `validation_top_1_error` drops as follows:  
 ![validation_top_1_error](/data/images/avg_val_top1_error.png)
 
 #### The Model Evaluation 
