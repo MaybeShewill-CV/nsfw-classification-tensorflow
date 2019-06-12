@@ -114,16 +114,16 @@ bash tools/export_nsfw_saved_model.sh
 You may monitor the training process using tensorboard tools
 
 During my experiment the `train loss` drops as follows:  
-![train_loss](/data/images/avg_train_loss.png)
+![train_loss](./data/images/avg_train_loss.png)
 
 The `train_top_1_error` drops as follows:  
-![train_top_1_error](/data/images/avg_train_top1_error.png)
+![train_top_1_error](./data/images/avg_train_top1_error.png)
 
 The `validation loss` drops as follows:  
-![validation_loss](/data/images/avg_val_loss.png)
+![validation_loss](./data/images/avg_val_loss.png)
 
 The `validation_top_1_error` drops as follows:  
-![validation_top_1_error](/data/images/avg_val_top1_error.png)
+![validation_top_1_error](./data/images/avg_val_top1_error.png)
 
 #### The Model Evaluation 
 
@@ -137,7 +137,7 @@ python tools/evaluate_nsfw.py --weights_path model/new_model/nsfw_cls.ckpt-16000
 ```
 
 After you run the script you should see something like this 
-![evaluation_result](/data/images/evaluation_nsfw.png)
+![evaluation_result](./data/images/evaluation_nsfw.png)
 
 The model's main evaluation index are as follows:
 
@@ -148,10 +148,10 @@ The model's main evaluation index are as follows:
 **F1 score**: 0.92344 with average weighted on each class
 
 The `Confusion_Matrix` is as follows:  
-![confusion_matrix](/data/images/confusion_matrix.png)
+![confusion_matrix](./data/images/confusion_matrix.png)
 
 The `Precison_Recall` is as follows:  
-![precision_recall](/data/images/precision_recall.png)
+![precision_recall](./data/images/precision_recall.png)
 
 
 #### Online demo
@@ -171,7 +171,7 @@ cd ROOT_DIR
 bash tools/convert_tfjs_model.sh
 ```
 The online demo's example are as follows:
-![online_demo](/data/images/online_demo.png)
+![online_demo](./data/images/online_demo.png)
 
 ## TODO
 - [ ] Add tensorflow serving script
